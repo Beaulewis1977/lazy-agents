@@ -21,17 +21,19 @@ key-files:
     - compose.production.yaml
   modified:
     - docker-compose.yml
+    - frontend/next.config.ts
     - .env.example
     - docs/getting-started.md
     - README.md
 key-decisions:
   - "Production deployment uses multi-file compose merge with explicit production overlay."
-  - "Production profile removes source bind mounts and applies restart/health defaults."
+  - "Production profile uses compose override tags to remove source bind mounts while retaining data persistence mounts."
   - "Setup docs treat APP_ENV/APP_DEBUG/SECRET_KEY/API_KEY as mandatory secure startup inputs."
+  - "Worker service is opt-in via compose profile until runtime worker entrypoint exists."
 patterns-established:
   - "Single-VM deploy path: compose baseline + production override + health checks"
   - "Operator docs include command-level verification and troubleshooting for security guardrails"
-duration: 1min
+duration: 74min
 completed: 2026-02-08
 ---
 
@@ -41,11 +43,11 @@ completed: 2026-02-08
 
 ## Performance
 
-- **Duration:** 1 min
+- **Duration:** 74 min
 - **Started:** 2026-02-08T05:18:15Z
-- **Completed:** 2026-02-08T05:18:27Z
+- **Completed:** 2026-02-08T06:32:08Z
 - **Tasks:** 3
-- **Files modified:** 5
+- **Files modified:** 6
 
 ## Accomplishments
 - Added `compose.production.yaml` to overlay production-specific runtime behavior (no source bind mounts, restart policies, healthchecks).
@@ -60,9 +62,16 @@ Each task was committed atomically:
 2. **Task 2: Align env contract with production security baseline** - `23358e1` (docs)
 3. **Task 3: Add reproducible baseline verification steps** - `d3fb3e3` (docs)
 
+Additional blocker-fix commits during operational verification:
+- `ff296a6` (fix): enable standalone Next.js output for production image
+- `b51ae72` (fix): remove Redis host-port binding conflict
+- `0e84f60` (fix): pin Next tracing root and make worker service opt-in profile
+- `d6147f0` (fix): correct production overlay merge semantics and frontend health check
+
 ## Files Created/Modified
 - `compose.production.yaml` - Production-only compose overrides for restart, healthchecks, env, and bind-mount removal.
 - `docker-compose.yml` - Clarified base compose role and explicit production overlay invocation.
+- `frontend/next.config.ts` - Enables stable standalone build output and explicit tracing root.
 - `.env.example` - Production-safe defaults and guardrail comments for required startup variables.
 - `docs/getting-started.md` - Added production startup path, verification commands, and troubleshooting guidance.
 - `README.md` - Added production compose command and health/readiness verification steps.
@@ -76,21 +85,45 @@ Each task was committed atomically:
 
 ### Auto-fixed Issues
 
-**1. [Rule 3 - Blocking] Compose CLI verification unavailable in execution environment**
-- **Found during:** Task 1
-- **Issue:** `docker compose -f ... config` was not executable (compose plugin unavailable; `docker-compose` binary unusable).
-- **Fix:** Performed fallback YAML structural validation with Python (`yaml.safe_load`) and documented CLI requirement in troubleshooting guidance.
-- **Files modified:** `docs/getting-started.md`
-- **Verification:** `python - <<PY ... yaml.safe_load('docker-compose.yml'/'compose.production.yaml') ... PY`
-- **Committed in:** `23358e1`
+**1. [Rule 3 - Blocking] Frontend image failed at runtime due missing `/app/server.js`**
+- **Found during:** Task 1 verification
+- **Issue:** Standalone artifact path was inconsistent and production container could not find startup entrypoint.
+- **Fix:** Enabled standalone output and pinned tracing/root behavior in `frontend/next.config.ts`.
+- **Files modified:** `frontend/next.config.ts`
+- **Verification:** `npm run build` + `docker compose ... up -d --build` + `curl -I http://localhost:3000`
+- **Committed in:** `ff296a6`, `0e84f60`
+
+**2. [Rule 3 - Blocking] Redis host port conflict prevented stack startup**
+- **Found during:** Task 1 verification
+- **Issue:** Host port `6379` was already allocated, causing compose startup failure.
+- **Fix:** Removed Redis host port exposure from base compose and kept service internal-only.
+- **Files modified:** `docker-compose.yml`
+- **Verification:** `docker compose ... up -d` succeeded for Redis/API/frontend stack.
+- **Committed in:** `b51ae72`
+
+**3. [Rule 3 - Blocking] Production overlay inherited development bind mounts**
+- **Found during:** Task 1 verification
+- **Issue:** Development bind mounts shadowed image artifacts in production profile, reintroducing runtime startup failures.
+- **Fix:** Used compose override tags to reset inherited volumes and reapply only required data mounts.
+- **Files modified:** `compose.production.yaml`
+- **Verification:** `docker compose ... config` confirmed merged volumes; production stack reached healthy state.
+- **Committed in:** `d6147f0`
+
+**4. [Rule 3 - Blocking] Worker default command referenced missing module**
+- **Found during:** Task 1 verification
+- **Issue:** `python -m app.worker` does not exist, causing restart loops.
+- **Fix:** Made worker service opt-in via `worker` profile so default production startup remains stable.
+- **Files modified:** `docker-compose.yml`
+- **Verification:** `docker compose ... ps` shows healthy default services without worker crash loops.
+- **Committed in:** `0e84f60`
 
 ---
 
-**Total deviations:** 1 auto-fixed (1 blocking)
-**Impact on plan:** Compose merge command remains documented for real operator environments; local session used structural fallback validation.
+**Total deviations:** 4 auto-fixed (4 blocking)
+**Impact on plan:** All fixes were required to make production-profile startup reproducible and healthy on real Docker hosts.
 
 ## Issues Encountered
-- Container runtime tooling in this environment does not support full compose merge execution checks.
+- None remaining after blocker fixes; production profile now boots and passes health/readiness checks.
 
 ## User Setup Required
 
