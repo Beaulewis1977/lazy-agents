@@ -6,6 +6,7 @@ from app.models.agent import Agent
 from app.models.skill import Skill
 from app.models.integration import Integration
 from app.models.execution import Execution, ExecutionStep
+from app.models.mcp_server import MCPServer
 
 __all__ = [
     "Agent",
@@ -13,4 +14,5 @@ __all__ = [
     "Integration",
     "Execution",
     "ExecutionStep",
+    "MCPServer",
 ]
