@@ -3,8 +3,11 @@ Security utilities for authentication and encryption.
 """
 
 import base64
+import copy
+import re
 import secrets
 from functools import lru_cache
+from typing import Any
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -16,6 +19,74 @@ from app.core.config import settings
 
 # API Key authentication
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+REDACTED_VALUE = "***REDACTED***"
+SENSITIVE_KEY_TERMS = (
+    "api_key",
+    "apikey",
+    "token",
+    "secret",
+    "password",
+    "authorization",
+    "credential",
+    "private_key",
+    "access_key",
+    "client_secret",
+)
+
+SENSITIVE_STRING_PATTERNS = [
+    re.compile(r"(?i)\b(authorization)\s*[:=]\s*([^\s,;]+)"),
+    re.compile(r"(?i)\b(api[_-]?key|token|secret|password)\s*[:=]\s*([^\s,;]+)"),
+    re.compile(r"(?i)(bearer\s+)([A-Za-z0-9._\-]+)"),
+]
+
+
+def mask_secret_value(value: Any) -> str:
+    """Return a deterministic masked value for any secret-like input."""
+    if value is None:
+        return REDACTED_VALUE
+    if isinstance(value, str) and not value:
+        return REDACTED_VALUE
+    return REDACTED_VALUE
+
+
+def _is_sensitive_key(key: Any) -> bool:
+    if not isinstance(key, str):
+        return False
+    normalized = key.lower().replace("-", "_")
+    return any(term in normalized for term in SENSITIVE_KEY_TERMS)
+
+
+def redact_sensitive_string(value: str) -> str:
+    """Redact token-like segments in free-form strings."""
+    redacted = value
+    for pattern in SENSITIVE_STRING_PATTERNS:
+        redacted = pattern.sub(r"\1=" + REDACTED_VALUE, redacted)
+    return redacted
+
+
+def redact_sensitive_data(value: Any) -> Any:
+    """Recursively redact sensitive fields in dict/list/string payloads."""
+    if isinstance(value, dict):
+        redacted = {}
+        for key, item in value.items():
+            if _is_sensitive_key(key):
+                redacted[key] = mask_secret_value(item)
+            else:
+                redacted[key] = redact_sensitive_data(item)
+        return redacted
+
+    if isinstance(value, list):
+        return [redact_sensitive_data(item) for item in value]
+
+    if isinstance(value, tuple):
+        return tuple(redact_sensitive_data(item) for item in value)
+
+    if isinstance(value, str):
+        return redact_sensitive_string(value)
+
+    # Keep primitives and unknown objects unchanged.
+    return copy.deepcopy(value)
 
 
 def verify_api_key(api_key: str | None = Security(api_key_header)) -> bool:
