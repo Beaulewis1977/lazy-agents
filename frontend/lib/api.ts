@@ -34,6 +34,7 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
     throw new Error(error.detail || `API error: ${response.status}`);
   }
 
+  // No-content responses are only expected for void endpoints (for example DELETE).
   if (response.status === 204 || response.status === 205) {
     return undefined as T;
   }
