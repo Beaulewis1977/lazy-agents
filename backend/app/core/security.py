@@ -2,9 +2,13 @@
 Security utilities for authentication and encryption.
 """
 
+import base64
 import secrets
+from functools import lru_cache
 
 from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from fastapi import HTTPException, Security, status
 from fastapi.security import APIKeyHeader
 
@@ -16,9 +20,13 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 def verify_api_key(api_key: str | None = Security(api_key_header)) -> bool:
     """Verify API key from header."""
-    if settings.API_KEY is None:
-        # No API key configured, allow all requests (development mode)
-        return True
+    if not settings.API_KEY:
+        if settings.is_development or settings.ALLOW_NO_API_KEY:
+            return True
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Server misconfiguration: API key not set",
+        )
 
     if api_key is None:
         raise HTTPException(
@@ -35,14 +43,23 @@ def verify_api_key(api_key: str | None = Security(api_key_header)) -> bool:
     return True
 
 
+def validate_security_configuration() -> None:
+    """Validate security settings at startup."""
+    if not settings.API_KEY and not (settings.is_development or settings.ALLOW_NO_API_KEY):
+        raise RuntimeError("API_KEY must be set in non-development mode")
+
+
 # Encryption for secrets storage
+@lru_cache(maxsize=1)
 def get_fernet() -> Fernet:
     """Get Fernet instance for encryption."""
-    # Derive key from secret key (in production, use a proper key derivation)
-    key = settings.SECRET_KEY.encode()[:32].ljust(32, b"=")
-    import base64
-
-    key = base64.urlsafe_b64encode(key)
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=settings.SECRET_KEY_SALT,
+        iterations=1_200_000,
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(settings.SECRET_KEY.encode()))
     return Fernet(key)
 
 

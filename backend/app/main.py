@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import agents, executions, health, integrations, skills, websocket
 from app.core.config import settings
 from app.core.database import init_db
+from app.core.security import validate_security_configuration
 
 # Configure structured logging
 structlog.configure(
@@ -35,6 +36,7 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     # Startup
     logger.info("Starting LazyAgents API", version=settings.APP_VERSION)
+    validate_security_configuration()
     await init_db()
     logger.info("Database initialized")
 
@@ -75,7 +77,7 @@ async def lifespan(app: FastAPI):
 
     # Emit startup log via WebSocket
     await websocket.emit_system_log(
-        "info", f"LazyAgents into loaded with {scheduled_count} schedules"
+        "info", f"LazyAgents initialized with {scheduled_count} schedules"
     )
 
     yield

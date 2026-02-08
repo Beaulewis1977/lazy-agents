@@ -2,10 +2,11 @@
 Integrations API endpoints.
 """
 
+import asyncio
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -135,7 +136,7 @@ async def list_integration_types():
 
 @router.get("", response_model=list[IntegrationResponse])
 async def list_integrations(
-    integration_type: str | None = None,
+    integration_type: str | None = Query(None, alias="type"),
     db: AsyncSession = Depends(get_db),
 ):
     """List all configured integrations."""
@@ -268,20 +269,17 @@ async def test_integration(
     try:
         # Test based on type
         if integration.type == "openai":
-            from openai import OpenAI
+            from openai import AsyncOpenAI
 
-            client = OpenAI(api_key=creds.get("api_key"))
-            client.models.list(limit=1)
+            openai_client = AsyncOpenAI(api_key=creds.get("api_key"))
+            async for _ in openai_client.models.list():
+                break
 
         elif integration.type == "anthropic":
-            from anthropic import Anthropic
+            from anthropic import AsyncAnthropic
 
-            client = Anthropic(api_key=creds.get("api_key"))
-            # Just listing models is a good lightweight check
-            # Note: client.models.list() might not be available in older SDKs,
-            # but usually messages.create with max_tokens=1 works.
-            # Using messages.create as definitive test
-            client.messages.create(
+            anthropic_client = AsyncAnthropic(api_key=creds.get("api_key"))
+            await anthropic_client.messages.create(
                 model="claude-3-haiku-20240307",
                 max_tokens=1,
                 messages=[{"role": "user", "content": "ping"}],
@@ -290,14 +288,17 @@ async def test_integration(
         elif integration.type == "google":
             import google.generativeai as genai
 
-            genai.configure(api_key=creds.get("api_key"))
-            list(genai.list_models(page_size=1))
+            def _test_google() -> None:
+                genai.configure(api_key=creds.get("api_key"))
+                list(genai.list_models(page_size=1))
+
+            await asyncio.to_thread(_test_google)
 
         elif integration.type == "github":
             import httpx
 
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
+            async with httpx.AsyncClient(timeout=30.0) as http_client:
+                resp = await http_client.get(
                     "https://api.github.com/user",
                     headers={
                         "Authorization": f"Bearer {creds.get('token')}",
@@ -309,8 +310,8 @@ async def test_integration(
         elif integration.type == "discord":
             import httpx
 
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
+            async with httpx.AsyncClient(timeout=30.0) as http_client:
+                resp = await http_client.get(
                     "https://discord.com/api/v10/users/@me",
                     headers={
                         "Authorization": f"Bot {creds.get('bot_token')}",
@@ -321,8 +322,8 @@ async def test_integration(
         elif integration.type == "slack":
             import httpx
 
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
+            async with httpx.AsyncClient(timeout=30.0) as http_client:
+                resp = await http_client.post(
                     "https://slack.com/api/auth.test",
                     headers={
                         "Authorization": f"Bearer {creds.get('bot_token')}",

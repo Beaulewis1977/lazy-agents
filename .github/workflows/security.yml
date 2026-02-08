@@ -44,7 +44,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm audit --audit-level=high
-        continue-on-error: true
+        continue-on-error: ${{ github.event_name == 'schedule' }}
 
   # ===========================================================================
   # Backend Dependency Audit
@@ -62,4 +62,4 @@ jobs:
           python-version: "3.12"
       - run: pip install pip-audit
       - run: pip-audit -r requirements.txt
-        continue-on-error: true
+        continue-on-error: ${{ github.event_name == 'schedule' }}

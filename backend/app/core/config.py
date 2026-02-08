@@ -4,6 +4,7 @@ Application configuration using Pydantic Settings.
 
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load .env from the backend directory
@@ -38,7 +39,9 @@ class Settings(BaseSettings):
 
     # Security
     SECRET_KEY: str = "change-me-in-production-please"
+    SECRET_KEY_SALT: bytes = b"change-me-salt-in-production"
     API_KEY: str | None = None
+    ALLOW_NO_API_KEY: bool = False
 
     # LLM Providers
     OPENAI_API_KEY: str | None = None
@@ -68,6 +71,15 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         """Check if running in development mode."""
         return self.APP_ENV == "development"
+
+    @field_validator("SECRET_KEY_SALT", mode="before")
+    @classmethod
+    def _validate_secret_key_salt(cls, value: str | bytes) -> bytes:
+        """Ensure SECRET_KEY_SALT is loaded as bytes with minimum entropy length."""
+        salt = value if isinstance(value, bytes) else value.encode("utf-8")
+        if len(salt) < 16:
+            raise ValueError("SECRET_KEY_SALT must be at least 16 bytes")
+        return salt
 
     @property
     def available_providers(self) -> list[str]:

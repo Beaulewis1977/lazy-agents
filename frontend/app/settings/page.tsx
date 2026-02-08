@@ -32,7 +32,8 @@ function loadSettingsFromStorage(): Settings {
   const savedSettings = localStorage.getItem('lazyagents_settings');
   if (savedSettings) {
     try {
-      return JSON.parse(savedSettings) as Settings;
+      const parsed = JSON.parse(savedSettings) as Partial<Settings>;
+      return { ...DEFAULT_SETTINGS, ...parsed };
     } catch {
       // ignore parse errors
     }

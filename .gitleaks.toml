@@ -6,11 +6,14 @@ useDefault = true
 [allowlist]
 paths = [
     '''.gitleaks.toml''',
-    '''.*test.*''',
+    '''^tests/.*''',
+    '''.*\.test\.(js|ts|py)$''',
+    '''.*_test\.py$''',
     '''.*\.example''',
     '''\.env\.example''',
-    '''.*fixture.*''',
-    '''.*mock.*''',
+    '''^.*fixtures/.*''',
+    '''^.*mocks/.*''',
+    '''.*\.mock\.(js|ts)$''',
 ]
 regexes = [
     '''EXAMPLE_.*''',

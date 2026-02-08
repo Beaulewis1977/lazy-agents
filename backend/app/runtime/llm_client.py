@@ -3,6 +3,7 @@ LLM Client - Unified interface for multiple LLM providers.
 Supports OpenAI, Anthropic, and Google's Gemini.
 """
 
+import asyncio
 import json
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
@@ -12,6 +13,40 @@ from typing import Any
 import httpx
 
 from app.core.config import settings
+
+_RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+
+
+def _is_retryable_exception(exc: Exception) -> bool:
+    """Check whether an HTTP exception is likely transient and worth retrying."""
+    if isinstance(exc, httpx.ConnectError | httpx.ReadTimeout | httpx.WriteTimeout):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code in _RETRYABLE_STATUS_CODES
+    return False
+
+
+async def _post_with_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    payload: dict[str, Any],
+    timeout: float = 120.0,
+    max_attempts: int = 3,
+) -> httpx.Response:
+    """POST with exponential backoff for transient failures."""
+    for attempt in range(1, max_attempts + 1):
+        try:
+            response = await client.post(url, headers=headers, json=payload, timeout=timeout)
+            response.raise_for_status()
+            return response
+        except Exception as exc:
+            if attempt == max_attempts or not _is_retryable_exception(exc):
+                raise
+            await asyncio.sleep(min(2 ** (attempt - 1), 8))
+
+    raise RuntimeError("Retry loop exited unexpectedly")
 
 
 @dataclass
@@ -91,16 +126,15 @@ class OpenAIClient(BaseLLMClient):
                 payload["tools"] = tools
                 payload["tool_choice"] = "auto"
 
-            response = await client.post(
+            response = await _post_with_retry(
+                client,
                 f"{self.base_url}/chat/completions",
                 headers={
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json",
                 },
-                json=payload,
-                timeout=120.0,
+                payload=payload,
             )
-            response.raise_for_status()
             data = response.json()
 
             choice = data["choices"][0]
@@ -207,17 +241,16 @@ class AnthropicClient(BaseLLMClient):
                     for t in tools
                 ]
 
-            response = await client.post(
+            response = await _post_with_retry(
+                client,
                 f"{self.base_url}/messages",
                 headers={
                     "x-api-key": self.api_key,
                     "anthropic-version": "2023-06-01",
                     "Content-Type": "application/json",
                 },
-                json=payload,
-                timeout=120.0,
+                payload=payload,
             )
-            response.raise_for_status()
             data = response.json()
 
             content = ""
@@ -331,12 +364,12 @@ class GoogleClient(BaseLLMClient):
             if system_instruction:
                 payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
 
-            response = await client.post(
-                f"{self.base_url}/models/{model}:generateContent?key={self.api_key}",
-                json=payload,
-                timeout=120.0,
+            response = await _post_with_retry(
+                client,
+                f"{self.base_url}/models/{model}:generateContent",
+                headers={"x-goog-api-key": self.api_key},
+                payload=payload,
             )
-            response.raise_for_status()
             data = response.json()
 
             content = ""

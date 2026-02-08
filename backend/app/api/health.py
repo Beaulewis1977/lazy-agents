@@ -4,7 +4,8 @@ Health check endpoints.
 
 from datetime import datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, status
+from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 
@@ -40,6 +41,16 @@ async def readiness_check():
     except Exception as e:
         checks["database"] = f"error: {e!s}"
 
-    status_code = "ready" if checks["database"] == "ok" else "not_ready"
+    readiness = "ready" if checks["database"] == "ok" else "not_ready"
+    http_status = (
+        status.HTTP_200_OK if readiness == "ready" else status.HTTP_503_SERVICE_UNAVAILABLE
+    )
 
-    return {"status": status_code, "timestamp": datetime.utcnow().isoformat(), "checks": checks}
+    return JSONResponse(
+        status_code=http_status,
+        content={
+            "status": readiness,
+            "timestamp": datetime.utcnow().isoformat(),
+            "checks": checks,
+        },
+    )

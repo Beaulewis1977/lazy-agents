@@ -14,6 +14,8 @@ from typing import Any, ClassVar
 
 import yaml
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class SkillParameter:
@@ -144,7 +146,7 @@ class SkillLoader:
                 is_builtin=False,
             )
         except Exception as e:
-            logging.warning(f"Error loading skill from {md_file}: {e}")
+            logger.warning(f"Error loading skill from {md_file}: {e}")
             return None
 
     def _load_folder_skill(self, skill_folder: Path) -> LoadedSkill | None:
@@ -213,7 +215,7 @@ class SkillLoader:
                 is_builtin=False,
             )
         except Exception as e:
-            logging.warning(f"Error loading skill from {skill_folder}: {e}")
+            logger.warning(f"Error loading skill from {skill_folder}: {e}")
             return None
 
     def _parse_frontmatter(self, content: str) -> tuple[dict[str, Any] | None, str]:

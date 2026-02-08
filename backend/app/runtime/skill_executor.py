@@ -54,7 +54,7 @@ class GitHubSkillExecutor(BaseSkillExecutor):
             "X-GitHub-Api-Version": "2022-11-28",
         }
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             try:
                 if skill_id == "github.list_issues":
                     return await self._list_issues(client, headers, params)
@@ -259,7 +259,7 @@ class DiscordSkillExecutor(BaseSkillExecutor):
             "Content-Type": "application/json",
         }
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             try:
                 if skill_id == "discord.send_message":
                     return await self._send_message(client, headers, params)
@@ -340,7 +340,7 @@ class SlackSkillExecutor(BaseSkillExecutor):
             "Content-Type": "application/json",
         }
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             try:
                 if skill_id == "slack.send_message":
                     return await self._send_message(client, headers, params)

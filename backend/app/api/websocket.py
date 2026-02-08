@@ -98,6 +98,8 @@ class ConnectionManager:
 
             for ws in disconnected:
                 self.execution_subscribers[log.execution_id].discard(ws)
+            if not self.execution_subscribers[log.execution_id]:
+                del self.execution_subscribers[log.execution_id]
 
     async def emit_log(
         self,

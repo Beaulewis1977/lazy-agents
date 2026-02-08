@@ -4,7 +4,7 @@ Uses APScheduler for background job scheduling.
 """
 
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 
 from apscheduler.jobstores.memory import MemoryJobStore
@@ -30,10 +30,10 @@ class AgentScheduler:
                 "misfire_grace_time": 60,
             },
         )
-        self._execute_callback: Callable | None = None
+        self._execute_callback: Callable[[str, str], Awaitable[None]] | None = None
         self._is_running = False
 
-    def set_execute_callback(self, callback: Callable):
+    def set_execute_callback(self, callback: Callable[[str, str], Awaitable[None]]):
         """
         Set the callback function that will be called when an agent should run.
         The callback should accept (agent_id: str, trigger: str) as arguments.

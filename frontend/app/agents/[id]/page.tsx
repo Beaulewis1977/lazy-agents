@@ -26,6 +26,7 @@ export default function AgentDetailPage() {
 
   const loadAgent = useCallback(async () => {
     try {
+      setError(null);
       setLoading(true);
       const data = await agentsAPI.getConfig(id);
       setAgent(data);
@@ -91,7 +92,8 @@ export default function AgentDetailPage() {
     try {
       await agentsAPI.update(agent.id, { status: newStatus });
       setAgent({ ...agent, status: newStatus });
-    } catch {
+    } catch (err) {
+      console.error('Failed to update status', err);
       alert('Failed to update status');
     }
   }
@@ -107,7 +109,8 @@ export default function AgentDetailPage() {
         loadAgent();
         if (activeTab === 'history') loadExecutions();
       }, 2000);
-    } catch {
+    } catch (err) {
+      console.error('Failed to run agent', err);
       alert('Failed to run agent');
     }
   }
@@ -117,7 +120,8 @@ export default function AgentDetailPage() {
     try {
       await agentsAPI.delete(agent.id);
       router.push('/agents');
-    } catch {
+    } catch (err) {
+      console.error('Failed to delete agent', err);
       alert('Failed to delete agent');
     }
   }
@@ -132,7 +136,8 @@ export default function AgentDetailPage() {
       const updated = await agentsAPI.getConfig(agent.id);
       setAgent(updated);
       alert('Schedule updated!');
-    } catch {
+    } catch (err) {
+      console.error('Failed to update schedule', err);
       alert('Failed to update schedule');
     } finally {
       setSavingSchedule(false);

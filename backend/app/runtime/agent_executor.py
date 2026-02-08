@@ -1,6 +1,7 @@
 import json
 import logging
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -15,6 +16,8 @@ from app.models.integration import Integration
 from app.models.skill import Skill
 from app.runtime.llm_client import LLMMessage, LLMResponse, get_llm_client
 from app.runtime.skill_executor import SkillResult, skill_executor_registry
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -41,9 +44,9 @@ class AgentExecutor:
 
     def __init__(self, db: AsyncSession):
         self.db = db
-        self._log_callbacks: list[callable] = []
+        self._log_callbacks: list[Callable[[dict[str, Any]], Awaitable[None]]] = []
 
-    def add_log_callback(self, callback: callable):
+    def add_log_callback(self, callback: Callable[[dict[str, Any]], Awaitable[None]]):
         """Add a callback for real-time log streaming."""
         self._log_callbacks.append(callback)
 
@@ -60,7 +63,7 @@ class AgentExecutor:
             try:
                 await callback(log_entry)
             except Exception:
-                logging.debug("Log callback failed", exc_info=True)
+                logger.debug("Log callback failed", exc_info=True)
 
     async def execute(
         self,
@@ -434,14 +437,42 @@ class AgentExecutor:
             tool_calls = message.get("tool_calls", [])
 
             if tool_calls:
-                return [
-                    {
-                        "id": tc.get("id", ""),
-                        "name": tc["function"]["name"],
-                        "arguments": json.loads(tc["function"]["arguments"]),
-                    }
-                    for tc in tool_calls
-                ]
+                parsed_tool_calls = []
+                for tc in tool_calls:
+                    function_data = tc.get("function", {})
+                    raw_arguments = function_data.get("arguments", "{}")
+                    parsed_arguments: dict[str, Any]
+                    try:
+                        decoded_arguments = (
+                            json.loads(raw_arguments)
+                            if isinstance(raw_arguments, str)
+                            else raw_arguments
+                        )
+                        if isinstance(decoded_arguments, dict):
+                            parsed_arguments = decoded_arguments
+                        else:
+                            parsed_arguments = {"value": decoded_arguments}
+                    except json.JSONDecodeError:
+                        logger.warning(
+                            "Malformed tool call arguments JSON",
+                            extra={
+                                "tool_call_id": tc.get("id", ""),
+                                "tool_name": function_data.get("name", ""),
+                            },
+                        )
+                        parsed_arguments = {"raw": str(raw_arguments)}
+                    except Exception:
+                        logger.exception("Unexpected error while parsing tool call arguments")
+                        parsed_arguments = {}
+
+                    parsed_tool_calls.append(
+                        {
+                            "id": tc.get("id", ""),
+                            "name": function_data.get("name", ""),
+                            "arguments": parsed_arguments,
+                        }
+                    )
+                return parsed_tool_calls
 
         # Anthropic format
         if "content" in raw and isinstance(raw["content"], list):
