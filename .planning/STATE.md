@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** Users can securely run and connect agents across all their tools from one place, with production-ready behavior on a self-hosted single-VM deployment.
-**Current focus:** Phase 2 - MCP Server Control Plane
+**Current focus:** Phase 3 - Agent UX and MCP Tool Visibility
 
 ## Current Position
 
-Phase: 2 of 5 (MCP Server Control Plane)
-Plan: 3 of 3 in current phase
-Status: Awaiting phase verification
-Last activity: 2026-02-08 — Completed 02-03-PLAN.md
+Phase: 3 of 5 (Agent UX and MCP Tool Visibility)
+Plan: 0 of 3 in current phase
+Status: Ready to plan
+Last activity: 2026-02-08 — Verified and completed Phase 2
 
 Progress: [█████░░░░░] 50%
 
@@ -28,6 +28,7 @@ Progress: [█████░░░░░] 50%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 2 (MCP Server Control Plane) | 3 | 17 min | 6 min |
+| 3 (Agent UX and MCP Tool Visibility) | 0 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: 5 min, 3 min, 9 min
@@ -50,6 +51,7 @@ Recent decisions affecting current work:
 - 2026-02-08 (02-02): Persist deterministic `last_error` lifecycle text and surface it through list/get/restart/sync API contracts
 - 2026-02-08 (02-03): Use typed `mcpServersAPI` client methods and refresh after lifecycle actions to keep UI status authoritative
 - 2026-02-08 (02-03): Keep env update payload optional in edit flows to preserve stored encrypted env values
+- 2026-02-08 (02-verify): Phase 2 must-haves verified against codebase with no gaps
 
 ### Pending Todos
 
@@ -62,6 +64,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-08 12:39
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-02-08 12:41
+Stopped at: Completed Phase 2 (02-mcp-server-control-plane)
 Resume file: None

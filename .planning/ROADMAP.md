@@ -13,7 +13,7 @@ This roadmap delivers a production-ready, self-hosted agent control plane by ext
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Security and Deployment Baseline** - Enforce secure defaults and establish reliable single-VM Compose deployment.
-- [ ] **Phase 2: MCP Server Control Plane** - Add MCP server persistence, lifecycle operations, and status management.
+- [x] **Phase 2: MCP Server Control Plane** - Add MCP server persistence, lifecycle operations, and status management.
 - [ ] **Phase 3: Agent UX and MCP Tool Visibility** - Complete operator-facing agent workflows and MCP tool browsing.
 - [ ] **Phase 4: MCP Runtime Invocation Integration** - Route namespaced MCP tools through agent execution and persist robust results.
 - [ ] **Phase 5: Production Hardening and First-Run Validation** - Prove installability, persistence, and production-readiness across restart and regression flows.
@@ -46,9 +46,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Implement MCP data model and CRUD API endpoints
-- [ ] 02-02-PLAN.md — Build manager lifecycle state machine with restart/sync operations
-- [ ] 02-03-PLAN.md — Add MCP server management UI with status and error surfaces
+- [x] 02-01-PLAN.md — Implement MCP data model and CRUD API endpoints
+- [x] 02-02-PLAN.md — Build manager lifecycle state machine with restart/sync operations
+- [x] 02-03-PLAN.md — Add MCP server management UI with status and error surfaces
 
 ### Phase 3: Agent UX and MCP Tool Visibility
 **Goal**: Operators can fully manage agent workflows and inspect available MCP tools before execution.
@@ -103,7 +103,7 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Security and Deployment Baseline | 0/3 | Not started | - |
-| 2. MCP Server Control Plane | 0/3 | Not started | - |
+| 2. MCP Server Control Plane | 3/3 | Complete | 2026-02-08 |
 | 3. Agent UX and MCP Tool Visibility | 0/3 | Not started | - |
 | 4. MCP Runtime Invocation Integration | 0/3 | Not started | - |
 | 5. Production Hardening and First-Run Validation | 0/3 | Not started | - |
