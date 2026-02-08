@@ -54,6 +54,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="nav-section-title">Configuration</div>
             <NavItem href="/skills" icon="🔧" label="Skills" />
             <NavItem href="/integrations" icon="🔗" label="Integrations" />
+            <NavItem href="/integrations/mcp" icon="🧩" label="MCP Servers" />
           </div>
 
           <div className="nav-section">

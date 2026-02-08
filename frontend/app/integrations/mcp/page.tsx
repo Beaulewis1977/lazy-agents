@@ -63,6 +63,13 @@ function parseEnv(envText: string): Record<string, string> {
   return env;
 }
 
+function statusBadgeClass(status: MCPServer["status"]): string {
+  if (status === "running") return "badge badge-success";
+  if (status === "starting") return "badge badge-info";
+  if (status === "error") return "badge badge-error";
+  return "badge badge-neutral";
+}
+
 export default function MCPIntegrationsPage() {
   const [servers, setServers] = useState<MCPServer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -365,7 +372,11 @@ export default function MCPIntegrationsPage() {
                       <td>
                         <code>{server.command}</code>
                       </td>
-                      <td>{server.status}</td>
+                      <td>
+                        <span className={statusBadgeClass(server.status)}>
+                          {server.status}
+                        </span>
+                      </td>
                       <td>{server.tools_detected?.length ?? 0}</td>
                       <td>
                         <div className="flex gap-2">
@@ -404,6 +415,36 @@ export default function MCPIntegrationsPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {servers.some((server) => server.status === "error" && server.last_error) && (
+          <div className="card mt-6" style={{ border: "1px solid var(--color-error)" }}>
+            <h3 className="mb-4">Server Errors</h3>
+            <div className="flex flex-col gap-4">
+              {servers
+                .filter((server) => server.status === "error" && server.last_error)
+                .map((server) => (
+                  <div
+                    key={`error-${server.id}`}
+                    style={{
+                      background: "var(--color-error-muted)",
+                      borderRadius: "var(--radius-lg)",
+                      padding: "var(--space-4)",
+                    }}
+                  >
+                    <p style={{ marginBottom: "var(--space-2)" }}>
+                      <strong>{server.name}</strong>
+                    </p>
+                    <p className="text-sm" style={{ marginBottom: "var(--space-2)" }}>
+                      {server.last_error}
+                    </p>
+                    <p className="text-xs text-secondary" style={{ marginBottom: 0 }}>
+                      Guidance: verify command/env configuration, then run Restart or Sync.
+                    </p>
+                  </div>
+                ))}
+            </div>
           </div>
         )}
       </div>
