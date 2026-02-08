@@ -1,5 +1,9 @@
 version: "3.8"
 
+# Development-first baseline compose.
+# For production on a single VM, use:
+# docker compose -f docker-compose.yml -f compose.production.yaml up -d
+
 services:
   # =============================================================================
   # Frontend - Next.js Dashboard
