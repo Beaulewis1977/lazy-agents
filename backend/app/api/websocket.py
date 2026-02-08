@@ -8,6 +8,8 @@ from datetime import datetime
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from app.core.security import redact_sensitive_string
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -112,7 +114,7 @@ class ConnectionManager:
         log = LogEntry(
             timestamp=datetime.utcnow().isoformat(),
             level=level,
-            message=message,
+            message=redact_sensitive_string(message),
             source=source,
             execution_id=execution_id,
         )

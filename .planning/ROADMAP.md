@@ -12,7 +12,7 @@ This roadmap delivers a production-ready, self-hosted agent control plane by ext
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Security and Deployment Baseline** - Enforce secure defaults and establish reliable single-VM Compose deployment.
+- [x] **Phase 1: Security and Deployment Baseline** - Enforce secure defaults and establish reliable single-VM Compose deployment.
 - [ ] **Phase 2: MCP Server Control Plane** - Add MCP server persistence, lifecycle operations, and status management.
 - [ ] **Phase 3: Agent UX and MCP Tool Visibility** - Complete operator-facing agent workflows and MCP tool browsing.
 - [ ] **Phase 4: MCP Runtime Invocation Integration** - Route namespaced MCP tools through agent execution and persist robust results.
@@ -31,9 +31,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Enforce fail-closed auth and startup validation for production profile
-- [ ] 01-02-PLAN.md — Standardize secret masking/redaction across API/UI/log surfaces
-- [ ] 01-03-PLAN.md — Harden and verify single-VM Compose deployment baseline
+- [x] 01-01-PLAN.md — Enforce fail-closed auth and startup validation for production profile
+- [x] 01-02-PLAN.md — Standardize secret masking/redaction across API/UI/log surfaces
+- [x] 01-03-PLAN.md — Harden and verify single-VM Compose deployment baseline
 
 ### Phase 2: MCP Server Control Plane
 **Goal**: Operators can configure, run, and manage MCP servers from the platform with clear runtime status.
@@ -98,11 +98,11 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 4
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Security and Deployment Baseline | 0/3 | Not started | - |
+| 1. Security and Deployment Baseline | 3/3 | Complete | 2026-02-08 |
 | 2. MCP Server Control Plane | 0/3 | Not started | - |
 | 3. Agent UX and MCP Tool Visibility | 0/3 | Not started | - |
 | 4. MCP Runtime Invocation Integration | 0/3 | Not started | - |

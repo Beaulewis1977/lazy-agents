@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import verify_api_key
+from app.core.security import redact_sensitive_data, redact_sensitive_string, verify_api_key
 from app.models.agent import Agent
 
 router = APIRouter(dependencies=[Depends(verify_api_key)])
@@ -193,9 +193,10 @@ async def run_agent(
         )
 
     # Get API keys from request if provided
+    request_input = dict(input_data or {})
     api_keys = {}
-    if "api_keys" in input_data:
-        api_keys = input_data.pop("api_keys")
+    if "api_keys" in request_input:
+        api_keys = request_input.pop("api_keys")
 
     # Execute the agent
     executor = AgentExecutor(db)
@@ -214,7 +215,7 @@ async def run_agent(
     try:
         execution = await executor.execute(
             agent_id=agent_id,
-            input_data=input_data,
+            input_data=request_input,
             trigger="manual",
             api_keys=api_keys,
         )
@@ -224,12 +225,12 @@ async def run_agent(
             "agent_id": agent_id,
             "execution_id": execution.id,
             "status": execution.status,
-            "output": execution.output_data,
+            "output": redact_sensitive_data(execution.output_data),
         }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Execution failed: {e!s}",
+            detail=f"Execution failed: {redact_sensitive_string(str(e))}",
         ) from e
 
 

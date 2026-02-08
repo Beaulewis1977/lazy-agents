@@ -10,9 +10,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import agents, executions, health, integrations, skills, websocket
-from app.core.config import settings
+from app.core.config import settings, validate_startup_security_settings
 from app.core.database import init_db
-from app.core.security import validate_security_configuration
+from app.core.security import redact_sensitive_string, validate_security_configuration
 
 # Configure structured logging
 structlog.configure(
@@ -37,6 +37,7 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting LazyAgents API", version=settings.APP_VERSION)
     validate_security_configuration()
+    validate_startup_security_settings()
     await init_db()
     logger.info("Database initialized")
 
@@ -52,7 +53,11 @@ async def lifespan(app: FastAPI):
             try:
                 await executor.execute(agent_id, trigger=trigger)
             except Exception as e:
-                logger.error("Scheduled execution failed", agent_id=agent_id, error=str(e))
+                logger.error(
+                    "Scheduled execution failed",
+                    agent_id=agent_id,
+                    error=redact_sensitive_string(str(e)),
+                )
 
     agent_scheduler.set_execute_callback(execute_scheduled_agent)
     agent_scheduler.start()

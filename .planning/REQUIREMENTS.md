@@ -27,14 +27,14 @@
 
 ### Security Baseline
 
-- [ ] **SEC-01**: In non-development mode, protected API routes reject unauthenticated requests by default.
-- [ ] **SEC-02**: Integration and MCP credentials are encrypted before database persistence.
-- [ ] **SEC-03**: Secret values are masked in configuration UI and excluded from API response payloads.
-- [ ] **SEC-04**: Execution and system logs do not expose plaintext credential values.
+- [x] **SEC-01**: In non-development mode, protected API routes reject unauthenticated requests by default.
+- [x] **SEC-02**: Integration and MCP credentials are encrypted before database persistence.
+- [x] **SEC-03**: Secret values are masked in configuration UI and excluded from API response payloads.
+- [x] **SEC-04**: Execution and system logs do not expose plaintext credential values.
 
 ### Deployment and Operability
 
-- [ ] **OPS-01**: Operator can start the platform on a single VM using Docker Compose with documented environment configuration.
+- [x] **OPS-01**: Operator can start the platform on a single VM using Docker Compose with documented environment configuration.
 - [ ] **OPS-02**: Fresh install can reach first successful agent execution within the documented setup flow.
 - [ ] **OPS-03**: Restarting services does not lose persisted agents, integrations, or MCP server configurations.
 
@@ -79,11 +79,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MRT-01 | Phase 4 | Pending |
 | MRT-02 | Phase 4 | Pending |
 | MRT-03 | Phase 4 | Pending |
-| SEC-01 | Phase 1 | Pending |
-| SEC-02 | Phase 1 | Pending |
-| SEC-03 | Phase 1 | Pending |
-| SEC-04 | Phase 1 | Pending |
-| OPS-01 | Phase 1 | Pending |
+| SEC-01 | Phase 1 | Complete |
+| SEC-02 | Phase 1 | Complete |
+| SEC-03 | Phase 1 | Complete |
+| SEC-04 | Phase 1 | Complete |
+| OPS-01 | Phase 1 | Complete |
 | OPS-02 | Phase 5 | Pending |
 | OPS-03 | Phase 5 | Pending |
 
@@ -94,4 +94,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-08*
-*Last updated: 2026-02-08 after roadmap traceability mapping*
+*Last updated: 2026-02-08 after Phase 1 verification completion*

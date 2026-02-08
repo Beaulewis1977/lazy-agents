@@ -3,8 +3,11 @@ Security utilities for authentication and encryption.
 """
 
 import base64
+import copy
+import re
 import secrets
 from functools import lru_cache
+from typing import Any
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -17,15 +20,84 @@ from app.core.config import settings
 # API Key authentication
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
+REDACTED_VALUE = "***REDACTED***"
+SENSITIVE_KEY_TERMS = (
+    "api_key",
+    "apikey",
+    "token",
+    "secret",
+    "password",
+    "authorization",
+    "credential",
+    "private_key",
+    "access_key",
+    "client_secret",
+)
+
+AUTH_HEADER_PATTERN = re.compile(r"(?i)\bauthorization\s*[:=]\s*(?:bearer\s+)?([^\s,;]+)")
+KEY_VALUE_SECRET_PATTERN = re.compile(
+    r"(?i)\b(api[_-]?key|token|secret|password)\s*[:=]\s*([^\s,;]+)"
+)
+BEARER_TOKEN_PATTERN = re.compile(r"(?i)\bbearer\s+([A-Za-z0-9._\-]+)")
+
+
+def mask_secret_value(value: Any) -> str:
+    """Return a deterministic masked value for any secret-like input."""
+    if value is None:
+        return REDACTED_VALUE
+    if isinstance(value, str) and not value:
+        return REDACTED_VALUE
+    return REDACTED_VALUE
+
+
+def _is_sensitive_key(key: Any) -> bool:
+    if not isinstance(key, str):
+        return False
+    normalized = key.lower().replace("-", "_")
+    return any(term in normalized for term in SENSITIVE_KEY_TERMS)
+
+
+def redact_sensitive_string(value: str) -> str:
+    """Redact token-like segments in free-form strings."""
+    redacted = AUTH_HEADER_PATTERN.sub(f"authorization={REDACTED_VALUE}", value)
+    redacted = KEY_VALUE_SECRET_PATTERN.sub(r"\1=" + REDACTED_VALUE, redacted)
+    redacted = BEARER_TOKEN_PATTERN.sub("bearer " + REDACTED_VALUE, redacted)
+    return redacted
+
+
+def redact_sensitive_data(value: Any) -> Any:
+    """Recursively redact sensitive fields in dict/list/string payloads."""
+    if isinstance(value, dict):
+        redacted = {}
+        for key, item in value.items():
+            if _is_sensitive_key(key):
+                redacted[key] = mask_secret_value(item)
+            else:
+                redacted[key] = redact_sensitive_data(item)
+        return redacted
+
+    if isinstance(value, list):
+        return [redact_sensitive_data(item) for item in value]
+
+    if isinstance(value, tuple):
+        return tuple(redact_sensitive_data(item) for item in value)
+
+    if isinstance(value, str):
+        return redact_sensitive_string(value)
+
+    # Keep primitives and unknown objects unchanged.
+    return copy.deepcopy(value)
+
 
 def verify_api_key(api_key: str | None = Security(api_key_header)) -> bool:
     """Verify API key from header."""
-    if not settings.API_KEY:
-        if settings.is_development or settings.ALLOW_NO_API_KEY:
+    if not settings.API_KEY or not settings.API_KEY.strip():
+        if settings.is_development:
+            # Development mode can run without API auth.
             return True
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Server misconfiguration: API key not set",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API authentication not configured",
         )
 
     if api_key is None:

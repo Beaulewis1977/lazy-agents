@@ -9,7 +9,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decrypt_secret
+from app.core.security import decrypt_secret, redact_sensitive_data, redact_sensitive_string
 from app.models.agent import Agent
 from app.models.execution import Execution, ExecutionStep
 from app.models.integration import Integration
@@ -56,7 +56,7 @@ class AgentExecutor:
             "timestamp": datetime.utcnow().isoformat(),
             "execution_id": execution_id,
             "level": level,
-            "message": message,
+            "message": redact_sensitive_string(message),
             "source": source,
         }
         for callback in self._log_callbacks:
@@ -73,6 +73,8 @@ class AgentExecutor:
         api_keys: dict[str, str] | None = None,
     ) -> Execution:
         """Execute an agent and return the execution record."""
+        input_payload = input_data or {}
+        redacted_input_payload = redact_sensitive_data(input_payload)
 
         # Load agent
         result = await self.db.execute(select(Agent).where(Agent.id == agent_id))
@@ -88,7 +90,7 @@ class AgentExecutor:
             trigger=trigger,
             status="running",
             started_at=datetime.utcnow(),
-            input_data=input_data or {},
+            input_data=redacted_input_payload,
         )
         self.db.add(execution)
         await self.db.commit()
@@ -110,7 +112,7 @@ class AgentExecutor:
                 agent=agent,
                 skills=skills,
                 integrations=integrations,
-                input_data=input_data or {},
+                input_data=input_payload,
             )
 
             # Run the agent loop
@@ -119,7 +121,7 @@ class AgentExecutor:
             # Update execution record
             execution.status = "success"
             execution.completed_at = datetime.utcnow()
-            execution.output_data = result
+            execution.output_data = redact_sensitive_data(result)
             execution.tokens_input = (
                 context.memory[-1].get("tokens_input", 0) if context.memory else 0
             )
@@ -132,7 +134,7 @@ class AgentExecutor:
         except Exception as e:
             execution.status = "failed"
             execution.completed_at = datetime.utcnow()
-            execution.error_message = str(e)
+            execution.error_message = redact_sensitive_string(str(e))
 
             await self._emit_log(execution.id, "error", f"Execution failed: {e!s}", "system")
 
@@ -297,9 +299,13 @@ class AgentExecutor:
                         status="success" if skill_result.success else "failed",
                         started_at=datetime.utcnow(),
                         completed_at=datetime.utcnow(),
-                        input_data=tool_args,
-                        output_data={"result": skill_result.data} if skill_result.success else None,
-                        error_message=skill_result.error,
+                        input_data=redact_sensitive_data(tool_args),
+                        output_data=redact_sensitive_data({"result": skill_result.data})
+                        if skill_result.success
+                        else None,
+                        error_message=redact_sensitive_string(skill_result.error)
+                        if skill_result.error
+                        else None,
                     )
                     self.db.add(step)
 
