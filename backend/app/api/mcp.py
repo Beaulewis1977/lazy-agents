@@ -5,13 +5,14 @@ MCP server management API endpoints.
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import encrypt_secret, verify_api_key
+from app.mcp import MCPServerLifecycleError, MCPServerManager, MCPServerNotFoundError
 from app.models.mcp_server import MCPServer
 
 router = APIRouter(prefix="/api/mcp", dependencies=[Depends(verify_api_key)])
@@ -42,6 +43,16 @@ def _to_response(server: MCPServer) -> "MCPServerResponse":
         created_at=server.created_at,
         updated_at=server.updated_at,
     )
+
+
+def _get_manager(request: Request) -> MCPServerManager:
+    manager = getattr(request.app.state, "mcp_manager", None)
+    if manager is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="MCP lifecycle manager is unavailable",
+        )
+    return manager
 
 
 class MCPServerBase(BaseModel):
@@ -265,3 +276,49 @@ async def delete_mcp_server(
     await db.delete(server)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/servers/{server_id}/restart", response_model=MCPServerResponse)
+async def restart_mcp_server(
+    server_id: str,
+    request: Request,
+):
+    """Restart an MCP runtime and return the persisted lifecycle state."""
+
+    manager = _get_manager(request)
+    try:
+        server = await manager.restart_server(server_id)
+        return _to_response(server)
+    except MCPServerNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except MCPServerLifecycleError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post("/servers/{server_id}/sync", response_model=MCPServerResponse)
+async def sync_mcp_server(
+    server_id: str,
+    request: Request,
+):
+    """Sync tool discovery for an MCP runtime and return updated state."""
+
+    manager = _get_manager(request)
+    try:
+        server = await manager.sync_server(server_id)
+        return _to_response(server)
+    except MCPServerNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except MCPServerLifecycleError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc

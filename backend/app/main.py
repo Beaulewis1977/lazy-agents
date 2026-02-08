@@ -11,6 +11,7 @@ import structlog
 from app.core.config import settings
 from app.core.database import init_db
 from app.api import agents, skills, integrations, executions, health, websocket, mcp
+from app.mcp import MCPServerManager
 
 # Configure structured logging
 structlog.configure(
@@ -36,6 +37,10 @@ async def lifespan(app: FastAPI):
     logger.info("Starting LazyAgents API", version=settings.APP_VERSION)
     await init_db()
     logger.info("Database initialized")
+
+    app.state.mcp_manager = MCPServerManager()
+    await app.state.mcp_manager.start_enabled_servers()
+    logger.info("MCP lifecycle manager initialized")
     
     # Start scheduler
     from app.runtime.scheduler import agent_scheduler
@@ -79,6 +84,8 @@ async def lifespan(app: FastAPI):
     yield
     
     # Shutdown
+    await app.state.mcp_manager.shutdown_all()
+    logger.info("MCP lifecycle manager shut down")
     agent_scheduler.stop()
     logger.info("Shutting down LazyAgents API")
 

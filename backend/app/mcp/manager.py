@@ -62,29 +62,30 @@ class MCPServerManager:
     async def start_server(self, server_id: str) -> MCPServer:
         """Transition to starting, initialize runtime, then persist running/error."""
 
-        async with self._lock:
+        try:
             config = await self._mark_starting(server_id)
-            old_runtime = self._runtimes.pop(server_id, None)
-            if old_runtime:
-                await self._safe_close(server_id, old_runtime)
+            async with self._lock:
+                old_runtime = self._runtimes.pop(server_id, None)
+                if old_runtime:
+                    await self._safe_close(server_id, old_runtime)
 
-            try:
                 runtime_handle, tools = await self._client.start_runtime_session(
                     command=config["command"],
                     args=config["args"],
                     env=config["env"],
                 )
                 self._runtimes[server_id] = RuntimeEntry(handle=runtime_handle)
-                return await self._persist_state(
-                    server_id,
-                    status="running",
-                    last_error=None,
-                    tools_detected=tools,
-                )
-            except Exception as exc:
-                error_text = self._format_error("startup", exc)
-                await self._persist_state(server_id, status="error", last_error=error_text)
-                raise MCPServerLifecycleError(error_text) from exc
+
+            return await self._persist_state(
+                server_id,
+                status="running",
+                last_error=None,
+                tools_detected=tools,
+            )
+        except Exception as exc:
+            error_text = self._format_error("startup", exc)
+            await self._persist_state(server_id, status="error", last_error=error_text)
+            raise MCPServerLifecycleError(error_text) from exc
 
     async def stop_server(self, server_id: str) -> MCPServer:
         """Stop a running MCP runtime and persist stopped state."""
@@ -109,10 +110,10 @@ class MCPServerManager:
     async def sync_server(self, server_id: str) -> MCPServer:
         """Refresh discovered tools and persist current lifecycle state."""
 
-        async with self._lock:
-            if server_id not in self._runtimes:
-                await self.start_server(server_id)
+        if server_id not in self._runtimes:
+            await self.start_server(server_id)
 
+        async with self._lock:
             runtime = self._runtimes.get(server_id)
             if runtime is None:
                 raise MCPServerLifecycleError(
