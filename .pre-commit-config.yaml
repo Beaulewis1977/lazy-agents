@@ -15,7 +15,8 @@ repos:
         args: [--markdown-linebreak-ext=md]
       - id: end-of-file-fixer
       - id: check-yaml
-        args: [--allow-multiple-documents, --unsafe]
+        args: [--allow-multiple-documents]
+        exclude: ^compose\.production\.yaml$
       - id: check-json
       - id: check-toml
       - id: check-added-large-files
@@ -29,7 +30,7 @@ repos:
   # Python: Ruff (lint + format)
   # =========================================================================
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.6
+    rev: v0.15.0
     hooks:
       - id: ruff
         args: [--fix, --config, backend/pyproject.toml]

@@ -1,4 +1,3 @@
-import os
 import sys
 from pathlib import Path
 
@@ -11,16 +10,25 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 # Ensure local backend package imports resolve under direct pytest invocation.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-# Force an async database URL before app modules initialize SQLAlchemy engine.
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./data/test-mcp.db"
 
-from app.api.mcp import router as mcp_router
-from app.core.database import Base, get_db
-from app.models.mcp_server import MCPServer
+
+def _load_app_modules():
+    from app.api.mcp import router as mcp_router
+    from app.core.database import Base, get_db
+    from app.models.mcp_server import MCPServer
+
+    return mcp_router, Base, get_db, MCPServer
+
+
+@pytest.fixture
+def app_modules(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{tmp_path}/mcp-crud-env.db")
+    return _load_app_modules()
 
 
 @pytest_asyncio.fixture
-async def db_session_factory(tmp_path):
+async def db_session_factory(app_modules, tmp_path):
+    _, Base, _, _ = app_modules
     db_url = f"sqlite+aiosqlite:///{tmp_path}/mcp-crud-test.db"
     engine = create_async_engine(db_url, future=True)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -34,18 +42,21 @@ async def db_session_factory(tmp_path):
 
 
 @pytest_asyncio.fixture
-async def test_client(db_session_factory):
+async def test_client(app_modules, db_session_factory):
+    mcp_router, _, get_db, _ = app_modules
     app = FastAPI()
     app.include_router(mcp_router)
 
     async def override_get_db():
-        async with db_session_factory() as session:
-            try:
-                yield session
-                await session.commit()
-            except Exception:
-                await session.rollback()
-                raise
+        session = db_session_factory()
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
 
     app.dependency_overrides[get_db] = override_get_db
 
@@ -158,7 +169,10 @@ async def test_mcp_server_validation_errors_are_actionable(test_client):
 
 
 @pytest.mark.asyncio
-async def test_mcp_server_env_values_are_encrypted_at_rest(test_client, db_session_factory):
+async def test_mcp_server_env_values_are_encrypted_at_rest(
+    test_client, db_session_factory, app_modules
+):
+    _, _, _, MCPServer = app_modules
     plain_env_value = "sample-env-value"
     payload = {
         "name": "Encrypted MCP",
@@ -181,3 +195,40 @@ async def test_mcp_server_env_values_are_encrypted_at_rest(test_client, db_sessi
     assert persisted.env["TOKEN"] != plain_env_value
     assert isinstance(persisted.env["TOKEN"], str)
     assert len(persisted.env["TOKEN"]) > 20
+
+
+@pytest.mark.asyncio
+async def test_mcp_server_update_can_merge_env_without_overwriting_existing_keys(test_client):
+    create_payload = {
+        "name": "Merge Env MCP",
+        "description": "Checks env merge behavior",
+        "command": "python",
+        "args": ["server.py"],
+        "env": {
+            "API_TOKEN": "original-token",
+            "ORG_ID": "org-123",
+        },
+        "enabled": True,
+    }
+
+    create_response = await test_client.post("/api/mcp/servers", json=create_payload)
+    assert create_response.status_code == 201
+    server_id = create_response.json()["id"]
+
+    update_payload = {
+        "env": {"API_TOKEN": "rotated-token", "REGION": "us-east-1"},
+        "merge_env": True,
+    }
+    update_response = await test_client.put(
+        f"/api/mcp/servers/{server_id}",
+        json=update_payload,
+    )
+    assert update_response.status_code == 200
+
+    get_response = await test_client.get(f"/api/mcp/servers/{server_id}")
+    assert get_response.status_code == 200
+    assert get_response.json()["env"] == {
+        "API_TOKEN": "********",
+        "ORG_ID": "********",
+        "REGION": "********",
+    }

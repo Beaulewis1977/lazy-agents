@@ -48,7 +48,7 @@ pip install mcp
 ## Architecture Patterns
 
 ### Recommended Project Structure
-```
+```text
 backend/app/
 ├── mcp/
 │   ├── manager.py      # Lifecycle/state transitions and runtime registry

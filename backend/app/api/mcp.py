@@ -116,6 +116,7 @@ class MCPServerUpdate(BaseModel):
     command: str | None = Field(default=None, min_length=1, max_length=500)
     args: list[str] | None = None
     env: dict[str, str] | None = None
+    merge_env: bool | None = None
     enabled: bool | None = None
 
     @field_validator("name", "command")
@@ -247,8 +248,15 @@ async def update_mcp_server(
         )
 
     updates = server_data.model_dump(exclude_unset=True)
+    merge_env = bool(updates.pop("merge_env", False))
     if "env" in updates:
-        updates["env"] = _encrypt_env(updates["env"] or {})
+        encrypted_env = _encrypt_env(updates["env"] or {})
+        if merge_env:
+            merged_env = dict(server.env or {})
+            merged_env.update(encrypted_env)
+            updates["env"] = merged_env
+        else:
+            updates["env"] = encrypted_env
 
     for field_name, value in updates.items():
         setattr(server, field_name, value)

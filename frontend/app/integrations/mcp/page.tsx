@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import DashboardLayout from "@/components/DashboardLayout";
 import {
@@ -81,6 +81,11 @@ export default function MCPIntegrationsPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [actionServerId, setActionServerId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MCPServer | null>(null);
+  const deleteDialogRef = useRef<HTMLDivElement | null>(null);
+  const cancelDeleteRef = useRef<HTMLButtonElement | null>(null);
+  const confirmDeleteRef = useRef<HTMLButtonElement | null>(null);
+  const deleteConfirmResolverRef = useRef<((value: boolean) => void) | null>(null);
 
   const editingServer = useMemo(
     () => servers.find((server) => server.id === editingServerId) ?? null,
@@ -90,6 +95,62 @@ export default function MCPIntegrationsPage() {
   useEffect(() => {
     void loadServers();
   }, []);
+
+  useEffect(() => {
+    if (!deleteTarget) {
+      return;
+    }
+
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const focusables = () =>
+      Array.from(
+        deleteDialogRef.current?.querySelectorAll<HTMLElement>(
+          "button,[href],input,select,textarea,[tabindex]:not([tabindex='-1'])"
+        ) ?? []
+      ).filter((element) => !element.hasAttribute("disabled"));
+
+    cancelDeleteRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!deleteTarget) {
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        resolveDeleteConfirmation(false);
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const nodes = focusables();
+      if (nodes.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocused?.focus();
+    };
+  }, [deleteTarget]);
 
   async function loadServers() {
     setError(null);
@@ -130,6 +191,20 @@ export default function MCPIntegrationsPage() {
     setFormState(initialFormState);
   }
 
+  function requestDeleteConfirmation(server: MCPServer): Promise<boolean> {
+    setDeleteTarget(server);
+    return new Promise((resolve) => {
+      deleteConfirmResolverRef.current = resolve;
+    });
+  }
+
+  function resolveDeleteConfirmation(confirmed: boolean) {
+    const resolver = deleteConfirmResolverRef.current;
+    deleteConfirmResolverRef.current = null;
+    setDeleteTarget(null);
+    resolver?.(confirmed);
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
@@ -155,6 +230,7 @@ export default function MCPIntegrationsPage() {
         const payload: MCPServerUpdateInput = payloadBase;
         if (formState.envText.trim()) {
           payload.env = parseEnv(formState.envText);
+          payload.merge_env = true;
         }
         await mcpServersAPI.update(editingServer.id, payload);
       }
@@ -169,7 +245,8 @@ export default function MCPIntegrationsPage() {
   }
 
   async function handleDelete(server: MCPServer) {
-    if (!confirm(`Delete MCP server \"${server.name}\"?`)) {
+    const confirmed = await requestDeleteConfirmation(server);
+    if (!confirmed) {
       return;
     }
 
@@ -236,8 +313,11 @@ export default function MCPIntegrationsPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="input-group">
-                <label className="input-label">Name</label>
+                <label className="input-label" htmlFor="mcp-server-name">
+                  Name
+                </label>
                 <input
+                  id="mcp-server-name"
                   className="input"
                   value={formState.name}
                   onChange={(event) =>
@@ -248,8 +328,11 @@ export default function MCPIntegrationsPage() {
               </div>
 
               <div className="input-group">
-                <label className="input-label">Command</label>
+                <label className="input-label" htmlFor="mcp-server-command">
+                  Command
+                </label>
                 <input
+                  id="mcp-server-command"
                   className="input"
                   value={formState.command}
                   onChange={(event) =>
@@ -261,8 +344,11 @@ export default function MCPIntegrationsPage() {
               </div>
 
               <div className="input-group" style={{ gridColumn: "1 / -1" }}>
-                <label className="input-label">Description</label>
+                <label className="input-label" htmlFor="mcp-server-description">
+                  Description
+                </label>
                 <input
+                  id="mcp-server-description"
                   className="input"
                   value={formState.description}
                   onChange={(event) =>
@@ -273,8 +359,11 @@ export default function MCPIntegrationsPage() {
               </div>
 
               <div className="input-group">
-                <label className="input-label">Args (comma or newline separated)</label>
+                <label className="input-label" htmlFor="mcp-server-args">
+                  Args (comma or newline separated)
+                </label>
                 <textarea
+                  id="mcp-server-args"
                   className="input textarea"
                   value={formState.argsText}
                   onChange={(event) =>
@@ -285,8 +374,11 @@ export default function MCPIntegrationsPage() {
               </div>
 
               <div className="input-group">
-                <label className="input-label">Env vars (KEY=VALUE per line)</label>
+                <label className="input-label" htmlFor="mcp-server-env">
+                  Env vars (KEY=VALUE per line)
+                </label>
                 <textarea
+                  id="mcp-server-env"
                   className="input textarea"
                   value={formState.envText}
                   onChange={(event) =>
@@ -296,15 +388,20 @@ export default function MCPIntegrationsPage() {
                 />
                 {formMode === "edit" && (
                   <p className="text-xs text-secondary" style={{ marginBottom: 0 }}>
-                    Leave env empty to keep existing stored values.
+                    Leave env empty to keep existing values. Entered keys merge with stored env.
                   </p>
                 )}
               </div>
             </div>
 
             <div className="flex items-center gap-2 mt-4">
-              <label className="input-label" style={{ marginBottom: 0 }}>
+              <label
+                className="input-label"
+                htmlFor="mcp-server-enabled"
+                style={{ marginBottom: 0 }}
+              >
                 <input
+                  id="mcp-server-enabled"
                   type="checkbox"
                   checked={formState.enabled}
                   onChange={(event) =>
@@ -382,14 +479,14 @@ export default function MCPIntegrationsPage() {
                         <div className="flex gap-2">
                           <button
                             className="btn btn-secondary btn-sm"
-                            onClick={() => handleLifecycleAction(server, "restart")}
+                            onClick={() => void handleLifecycleAction(server, "restart")}
                             disabled={busy}
                           >
                             Restart
                           </button>
                           <button
                             className="btn btn-secondary btn-sm"
-                            onClick={() => handleLifecycleAction(server, "sync")}
+                            onClick={() => void handleLifecycleAction(server, "sync")}
                             disabled={busy}
                           >
                             Sync
@@ -403,7 +500,7 @@ export default function MCPIntegrationsPage() {
                           </button>
                           <button
                             className="btn btn-danger btn-sm"
-                            onClick={() => handleDelete(server)}
+                            onClick={() => void handleDelete(server)}
                             disabled={busy}
                           >
                             Delete
@@ -444,6 +541,63 @@ export default function MCPIntegrationsPage() {
                     </p>
                   </div>
                 ))}
+            </div>
+          </div>
+        )}
+
+        {deleteTarget && (
+          <div
+            role="presentation"
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0, 0, 0, 0.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 50,
+              padding: "var(--space-4)",
+            }}
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                resolveDeleteConfirmation(false);
+              }
+            }}
+          >
+            <div
+              ref={deleteDialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-mcp-server-title"
+              aria-describedby="delete-mcp-server-description"
+              className="card"
+              style={{ width: "100%", maxWidth: 560 }}
+            >
+              <h3 id="delete-mcp-server-title" className="mb-3">
+                Delete MCP server
+              </h3>
+              <p id="delete-mcp-server-description" className="text-sm text-secondary mb-4">
+                Delete <strong>{deleteTarget.name}</strong>? This removes the saved configuration
+                and runtime state.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <button
+                  ref={cancelDeleteRef}
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => resolveDeleteConfirmation(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  ref={confirmDeleteRef}
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => resolveDeleteConfirmation(true)}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         )}

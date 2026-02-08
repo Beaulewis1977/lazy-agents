@@ -1,4 +1,3 @@
-import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,12 +10,20 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 # Ensure local backend package imports resolve under direct pytest invocation.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-# Force an async database URL before app modules initialize SQLAlchemy engine.
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./data/test-mcp-lifecycle.db"
 
-from app.api.mcp import router as mcp_router
-from app.core.database import Base, get_db
-from app.mcp.manager import MCPServerManager
+
+def _load_app_modules():
+    from app.api.mcp import router as mcp_router
+    from app.core.database import Base, get_db
+    from app.mcp.manager import MCPServerManager
+
+    return mcp_router, Base, get_db, MCPServerManager
+
+
+@pytest.fixture
+def app_modules(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{tmp_path}/mcp-lifecycle-env.db")
+    return _load_app_modules()
 
 
 class FakeMCPClientModule:
@@ -58,7 +65,8 @@ class FakeMCPClientModule:
 
 
 @pytest_asyncio.fixture
-async def db_session_factory(tmp_path):
+async def db_session_factory(app_modules, tmp_path):
+    _, Base, _, _ = app_modules
     db_url = f"sqlite+aiosqlite:///{tmp_path}/mcp-lifecycle-test.db"
     engine = create_async_engine(db_url, future=True)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -72,7 +80,8 @@ async def db_session_factory(tmp_path):
 
 
 @pytest_asyncio.fixture
-async def test_app(db_session_factory):
+async def test_app(app_modules, db_session_factory):
+    mcp_router, _, get_db, MCPServerManager = app_modules
     app = FastAPI()
     app.include_router(mcp_router)
 
@@ -83,13 +92,15 @@ async def test_app(db_session_factory):
     )
 
     async def override_get_db():
-        async with db_session_factory() as session:
-            try:
-                yield session
-                await session.commit()
-            except Exception:
-                await session.rollback()
-                raise
+        session = db_session_factory()
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
 
     app.dependency_overrides[get_db] = override_get_db
     return app

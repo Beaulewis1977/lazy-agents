@@ -138,6 +138,7 @@ export interface MCPServerUpdateInput {
   command?: string;
   args?: string[];
   env?: Record<string, string>;
+  merge_env?: boolean;
   enabled?: boolean;
 }
 
