@@ -2,7 +2,7 @@
 API route modules.
 """
 
-from app.api import agents, skills, integrations, executions, health
+from app.api import agents, skills, integrations, executions, health, mcp
 
 __all__ = [
     "agents",
@@ -10,4 +10,5 @@ __all__ = [
     "integrations",
     "executions",
     "health",
+    "mcp",
 ]

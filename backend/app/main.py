@@ -10,7 +10,7 @@ import structlog
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api import agents, skills, integrations, executions, health, websocket
+from app.api import agents, skills, integrations, executions, health, websocket, mcp
 
 # Configure structured logging
 structlog.configure(
@@ -108,6 +108,7 @@ app.include_router(agents.router, prefix="/api/agents", tags=["Agents"])
 app.include_router(skills.router, prefix="/api/skills", tags=["Skills"])
 app.include_router(integrations.router, prefix="/api/integrations", tags=["Integrations"])
 app.include_router(executions.router, prefix="/api/executions", tags=["Executions"])
+app.include_router(mcp.router, tags=["MCP"])
 app.include_router(websocket.router, prefix="/ws", tags=["WebSocket"])
 
 
@@ -119,4 +120,3 @@ async def root():
         "version": settings.APP_VERSION,
         "docs": "/docs",
     }
-
