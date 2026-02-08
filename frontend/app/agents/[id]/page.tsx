@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { Fragment, useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import { agentsAPI, executionsAPI, AgentConfig, Execution, ExecutionDetail } from "@/lib/api";
@@ -436,9 +436,8 @@ export default function AgentDetailPage() {
                   </thead>
                   <tbody className="text-sm">
                     {executions.map((exec) => (
-                      <>
+                      <Fragment key={exec.id}>
                         <tr
-                          key={exec.id}
                           className="border-b border-border/50 hover:bg-neutral-muted/50 cursor-pointer"
                           onClick={() => handleExecutionClick(exec.id)}
                         >
@@ -553,7 +552,7 @@ export default function AgentDetailPage() {
                             </td>
                           </tr>
                         )}
-                      </>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
