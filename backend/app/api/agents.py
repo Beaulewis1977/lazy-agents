@@ -2,8 +2,8 @@
 Agent CRUD API endpoints.
 """
 
-from typing import List, Optional
 from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -20,49 +20,53 @@ router = APIRouter(dependencies=[Depends(verify_api_key)])
 # Schemas
 # =============================================================================
 
+
 class AgentCreate(BaseModel):
     """Schema for creating an agent."""
+
     name: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
+    description: str | None = None
     model: str = "gpt-4o-mini"
-    system_prompt: Optional[str] = None
+    system_prompt: str | None = None
     temperature: float = Field(0.7, ge=0, le=2)
-    skills: List[str] = []
-    integrations: List[str] = []
-    schedule: Optional[str] = None
+    skills: list[str] = []
+    integrations: list[str] = []
+    schedule: str | None = None
     memory_enabled: bool = True
 
 
 class AgentUpdate(BaseModel):
     """Schema for updating an agent."""
-    name: Optional[str] = Field(None, min_length=1, max_length=255)
-    description: Optional[str] = None
-    status: Optional[str] = None
-    model: Optional[str] = None
-    system_prompt: Optional[str] = None
-    temperature: Optional[float] = Field(None, ge=0, le=2)
-    skills: Optional[List[str]] = None
-    integrations: Optional[List[str]] = None
-    schedule: Optional[str] = None
-    memory_enabled: Optional[bool] = None
+
+    name: str | None = Field(None, min_length=1, max_length=255)
+    description: str | None = None
+    status: str | None = None
+    model: str | None = None
+    system_prompt: str | None = None
+    temperature: float | None = Field(None, ge=0, le=2)
+    skills: list[str] | None = None
+    integrations: list[str] | None = None
+    schedule: str | None = None
+    memory_enabled: bool | None = None
 
 
 class AgentResponse(BaseModel):
     """Schema for agent response."""
+
     id: str
     name: str
-    description: Optional[str]
+    description: str | None
     status: str
     model: str
-    system_prompt: Optional[str]
+    system_prompt: str | None
     temperature: float
-    skills: List[str]
-    integrations: List[str]
-    schedule: Optional[str]
+    skills: list[str]
+    integrations: list[str]
+    schedule: str | None
     memory_enabled: bool
     created_at: datetime
     updated_at: datetime
-    last_run_at: Optional[datetime]
+    last_run_at: datetime | None
     total_runs: int
     successful_runs: int
 
@@ -74,18 +78,19 @@ class AgentResponse(BaseModel):
 # Endpoints
 # =============================================================================
 
-@router.get("", response_model=List[AgentResponse])
+
+@router.get("", response_model=list[AgentResponse])
 async def list_agents(
     skip: int = 0,
     limit: int = 50,
-    status: Optional[str] = None,
+    status: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """List all agents."""
     query = select(Agent).offset(skip).limit(limit)
     if status:
         query = query.where(Agent.status == status)
-    
+
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -111,13 +116,13 @@ async def get_agent(
     """Get an agent by ID."""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent {agent_id} not found",
         )
-    
+
     return agent
 
 
@@ -130,18 +135,18 @@ async def update_agent(
     """Update an agent."""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent {agent_id} not found",
         )
-    
+
     # Update fields
     update_data = agent_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(agent, field, value)
-    
+
     await db.commit()
     await db.refresh(agent)
     return agent
@@ -155,13 +160,13 @@ async def delete_agent(
     """Delete an agent."""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent {agent_id} not found",
         )
-    
+
     await db.delete(agent)
     await db.commit()
 
@@ -169,30 +174,32 @@ async def delete_agent(
 @router.post("/{agent_id}/run")
 async def run_agent(
     agent_id: str,
-    input_data: dict = {},
+    input_data: dict | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Trigger an agent execution."""
-    from app.runtime.agent_executor import AgentExecutor
+    if input_data is None:
+        input_data = {}
     from app.api.websocket import emit_execution_log
-    
+    from app.runtime.agent_executor import AgentExecutor
+
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent {agent_id} not found",
         )
-    
+
     # Get API keys from request if provided
     api_keys = {}
     if "api_keys" in input_data:
         api_keys = input_data.pop("api_keys")
-    
+
     # Execute the agent
     executor = AgentExecutor(db)
-    
+
     # Add WebSocket log callback
     async def log_callback(log_entry):
         await emit_execution_log(
@@ -201,8 +208,9 @@ async def run_agent(
             log_entry["message"],
             log_entry["source"],
         )
+
     executor.add_log_callback(log_callback)
-    
+
     try:
         execution = await executor.execute(
             agent_id=agent_id,
@@ -210,7 +218,7 @@ async def run_agent(
             trigger="manual",
             api_keys=api_keys,
         )
-        
+
         return {
             "message": f"Agent {agent.name} executed",
             "agent_id": agent_id,
@@ -221,8 +229,8 @@ async def run_agent(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Execution failed: {str(e)}",
-        )
+            detail=f"Execution failed: {e!s}",
+        ) from e
 
 
 @router.get("/{agent_id}/config")
@@ -231,19 +239,19 @@ async def get_agent_config(
     db: AsyncSession = Depends(get_db),
 ):
     """Get complete agent configuration including skill details."""
-    from app.models.skill import Skill
     from app.models.integration import Integration
+    from app.models.skill import Skill
     from app.runtime.scheduler import agent_scheduler
-    
+
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent {agent_id} not found",
         )
-    
+
     # Load skill details
     skill_details = []
     if agent.skills:
@@ -258,7 +266,7 @@ async def get_agent_config(
             }
             for s in skills_result.scalars().all()
         ]
-    
+
     # Load integration details
     integration_details = []
     if agent.integrations:
@@ -274,10 +282,10 @@ async def get_agent_config(
             }
             for i in integrations_result.scalars().all()
         ]
-    
+
     # Get schedule info
     next_run = agent_scheduler.get_next_run(agent_id)
-    
+
     return {
         "id": agent.id,
         "name": agent.name,
@@ -295,10 +303,8 @@ async def get_agent_config(
             "total_runs": agent.total_runs,
             "successful_runs": agent.successful_runs,
             "success_rate": (
-                (agent.successful_runs / agent.total_runs * 100)
-                if agent.total_runs > 0 else 0
+                (agent.successful_runs / agent.total_runs * 100) if agent.total_runs > 0 else 0
             ),
             "last_run_at": agent.last_run_at.isoformat() if agent.last_run_at else None,
         },
     }
-

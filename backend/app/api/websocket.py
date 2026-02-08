@@ -2,13 +2,11 @@
 WebSocket endpoints for real-time communication.
 """
 
-import asyncio
-import json
-from typing import Dict, Set, List
-from datetime import datetime
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
-from dataclasses import dataclass, asdict
 import logging
+from dataclasses import asdict, dataclass
+from datetime import datetime
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +16,7 @@ router = APIRouter()
 @dataclass
 class LogEntry:
     """A log entry to broadcast."""
+
     timestamp: str
     level: str
     message: str
@@ -27,56 +26,56 @@ class LogEntry:
 
 class ConnectionManager:
     """Manage WebSocket connections."""
-    
+
     def __init__(self):
         # All log subscribers
-        self.log_subscribers: Set[WebSocket] = set()
+        self.log_subscribers: set[WebSocket] = set()
         # Execution-specific subscribers: execution_id -> set of websockets
-        self.execution_subscribers: Dict[str, Set[WebSocket]] = {}
+        self.execution_subscribers: dict[str, set[WebSocket]] = {}
         # Log buffer for new subscribers
-        self.log_buffer: List[LogEntry] = []
+        self.log_buffer: list[LogEntry] = []
         self.max_buffer_size = 100
-    
+
     async def connect_logs(self, websocket: WebSocket):
         """Connect a client to the log stream."""
         await websocket.accept()
         self.log_subscribers.add(websocket)
-        
+
         # Send buffered logs
         for log in self.log_buffer[-50:]:
             try:
                 await websocket.send_json(asdict(log))
             except Exception:
-                pass
-    
+                logging.debug("Failed to send buffered log to websocket")
+
     async def connect_execution(self, websocket: WebSocket, execution_id: str):
         """Connect a client to a specific execution's log stream."""
         await websocket.accept()
-        
+
         if execution_id not in self.execution_subscribers:
             self.execution_subscribers[execution_id] = set()
         self.execution_subscribers[execution_id].add(websocket)
-    
+
     def disconnect_logs(self, websocket: WebSocket):
         """Disconnect a client from the log stream."""
         self.log_subscribers.discard(websocket)
-    
+
     def disconnect_execution(self, websocket: WebSocket, execution_id: str):
         """Disconnect a client from an execution's log stream."""
         if execution_id in self.execution_subscribers:
             self.execution_subscribers[execution_id].discard(websocket)
             if not self.execution_subscribers[execution_id]:
                 del self.execution_subscribers[execution_id]
-    
+
     async def broadcast_log(self, log: LogEntry):
         """Broadcast a log entry to all subscribers."""
         # Add to buffer
         self.log_buffer.append(log)
         if len(self.log_buffer) > self.max_buffer_size:
-            self.log_buffer = self.log_buffer[-self.max_buffer_size:]
-        
+            self.log_buffer = self.log_buffer[-self.max_buffer_size :]
+
         log_dict = asdict(log)
-        
+
         # Broadcast to all log subscribers
         disconnected = set()
         for websocket in self.log_subscribers:
@@ -84,10 +83,10 @@ class ConnectionManager:
                 await websocket.send_json(log_dict)
             except Exception:
                 disconnected.add(websocket)
-        
+
         for ws in disconnected:
             self.log_subscribers.discard(ws)
-        
+
         # Broadcast to execution-specific subscribers
         if log.execution_id and log.execution_id in self.execution_subscribers:
             disconnected = set()
@@ -96,10 +95,10 @@ class ConnectionManager:
                     await websocket.send_json(log_dict)
                 except Exception:
                     disconnected.add(websocket)
-            
+
             for ws in disconnected:
                 self.execution_subscribers[log.execution_id].discard(ws)
-    
+
     async def emit_log(
         self,
         level: str,
@@ -129,7 +128,7 @@ async def websocket_logs(websocket: WebSocket):
     Sends all system logs to connected clients.
     """
     await manager.connect_logs(websocket)
-    
+
     try:
         while True:
             # Keep connection alive, receive pings
@@ -149,7 +148,7 @@ async def websocket_execution(websocket: WebSocket, execution_id: str):
     WebSocket endpoint for streaming a specific execution's logs.
     """
     await manager.connect_execution(websocket, execution_id)
-    
+
     try:
         while True:
             data = await websocket.receive_text()

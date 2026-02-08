@@ -4,13 +4,14 @@ Main FastAPI application entry point.
 """
 
 from contextlib import asynccontextmanager
+
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import structlog
 
+from app.api import agents, executions, health, integrations, skills, websocket
 from app.core.config import settings
 from app.core.database import init_db
-from app.api import agents, skills, integrations, executions, health, websocket
 
 # Configure structured logging
 structlog.configure(
@@ -19,7 +20,7 @@ structlog.configure(
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.JSONRenderer()
+        structlog.processors.JSONRenderer(),
     ],
     wrapper_class=structlog.stdlib.BoundLogger,
     context_class=dict,
@@ -36,12 +37,12 @@ async def lifespan(app: FastAPI):
     logger.info("Starting LazyAgents API", version=settings.APP_VERSION)
     await init_db()
     logger.info("Database initialized")
-    
+
     # Start scheduler
-    from app.runtime.scheduler import agent_scheduler
     from app.core.database import async_session
     from app.runtime.agent_executor import AgentExecutor
-    
+    from app.runtime.scheduler import agent_scheduler
+
     async def execute_scheduled_agent(agent_id: str, trigger: str):
         """Callback for scheduled agent execution."""
         async with async_session() as db:
@@ -50,21 +51,20 @@ async def lifespan(app: FastAPI):
                 await executor.execute(agent_id, trigger=trigger)
             except Exception as e:
                 logger.error("Scheduled execution failed", agent_id=agent_id, error=str(e))
-    
+
     agent_scheduler.set_execute_callback(execute_scheduled_agent)
     agent_scheduler.start()
     logger.info("Agent scheduler started")
-    
+
     # Load existing schedules
     from sqlalchemy import select
+
     from app.models.agent import Agent
-    
+
     async with async_session() as db:
         result = await db.execute(
             select(Agent).where(
-                Agent.status == "active",
-                Agent.schedule.isnot(None),
-                Agent.schedule != ""
+                Agent.status == "active", Agent.schedule.isnot(None), Agent.schedule != ""
             )
         )
         scheduled_count = 0
@@ -72,12 +72,14 @@ async def lifespan(app: FastAPI):
             if agent_scheduler.schedule_agent(agent.id, agent.schedule):
                 scheduled_count += 1
         logger.info(f"Loaded {scheduled_count} scheduled agents")
-    
+
     # Emit startup log via WebSocket
-    await websocket.emit_system_log("info", f"LazyAgents into loaded with {scheduled_count} schedules")
-    
+    await websocket.emit_system_log(
+        "info", f"LazyAgents into loaded with {scheduled_count} schedules"
+    )
+
     yield
-    
+
     # Shutdown
     agent_scheduler.stop()
     logger.info("Shutting down LazyAgents API")
@@ -119,4 +121,3 @@ async def root():
         "version": settings.APP_VERSION,
         "docs": "/docs",
     }
-

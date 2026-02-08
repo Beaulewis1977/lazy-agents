@@ -1,0 +1,69 @@
+language: en-US
+
+reviews:
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+      - develop
+
+  request_changes_workflow: true
+  high_level_summary: true
+
+  path_filters:
+    - "!**/node_modules/**"
+    - "!**/dist/**"
+    - "!**/*.lock"
+    - "!**/package-lock.json"
+    - "!**/.next/**"
+    - "!**/venv/**"
+    - "!**/coverage/**"
+
+  path_instructions:
+    - path: "backend/app/api/**/*.py"
+      instructions: |
+        Review for FastAPI best practices.
+        Check for proper input validation with Pydantic models.
+        Verify correct HTTP status codes and error handling.
+        Ensure API endpoints follow RESTful conventions.
+        Flag any hardcoded secrets or credentials.
+
+    - path: "backend/app/core/security.py"
+      instructions: |
+        Critical security code. Review with extra scrutiny.
+        Check for proper encryption/decryption patterns.
+        Verify no secrets are logged or exposed.
+
+    - path: "backend/app/runtime/**/*.py"
+      instructions: |
+        Review for proper error handling and timeout management.
+        Verify LLM API calls have retry logic.
+        Check for proper async/await patterns.
+
+    - path: "frontend/app/**/*.tsx"
+      instructions: |
+        Review for React and Next.js App Router best practices.
+        Check for proper TypeScript types (no 'any').
+        Verify proper error boundaries and loading states.
+        Check for accessibility concerns.
+
+    - path: "frontend/lib/**/*.ts"
+      instructions: |
+        Review for proper TypeScript types and error handling.
+        Verify API client methods match backend endpoints.
+
+    - path: "**/*.test.*"
+      instructions: |
+        Verify test coverage is comprehensive.
+        Check for proper mocking of external services.
+        Ensure edge cases are covered.
+
+    - path: "docker-compose.yml"
+      instructions: |
+        Check for security best practices in container config.
+        Verify no secrets are hardcoded.
+        Check volume mounts and network configuration.
+
+chat:
+  auto_reply: true

@@ -1,16 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import { api } from "@/lib/api";
+
+interface SkillParameter {
+  type: string;
+  description: string;
+  default?: unknown;
+  enum?: string[];
+}
 
 interface SkillConfig {
   id: string;
   name: string;
   description: string;
   category: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, SkillParameter>;
   integration_required: string | null;
   is_builtin: boolean;
   implementation_type: string;
@@ -38,27 +45,27 @@ export default function SkillDetailPage() {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "parameters" | "implementation" | "files">("overview");
 
-  useEffect(() => {
-    loadSkill();
-  }, [skillId]);
-
-  async function loadSkill() {
+  const loadSkill = useCallback(async () => {
     try {
       setLoading(true);
       const data = await api.skills.getConfig(skillId);
-      setSkill(data);
+      setSkill(data as SkillConfig);
       setEditData({
         name: data.name,
         description: data.description || "",
         category: data.category,
         implementation: data.implementation || "",
       });
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load skill');
     } finally {
       setLoading(false);
     }
-  }
+  }, [skillId]);
+
+  useEffect(() => {
+    loadSkill();
+  }, [loadSkill]);
 
   async function handleSave() {
     try {
@@ -66,8 +73,8 @@ export default function SkillDetailPage() {
       await api.skills.update(skillId, editData);
       await loadSkill();
       setEditing(false);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save skill');
     } finally {
       setSaving(false);
     }
@@ -75,12 +82,12 @@ export default function SkillDetailPage() {
 
   async function handleDelete() {
     if (!confirm("Are you sure you want to delete this skill?")) return;
-    
+
     try {
       await api.skills.delete(skillId);
       router.push("/skills");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete skill');
     }
   }
 
@@ -323,7 +330,7 @@ export default function SkillDetailPage() {
                   <code>{skill.source_path}</code>
                 </div>
               )}
-              
+
               {Object.keys(skill.templates).length > 0 && (
                 <div className="templates-section">
                   <h3>Templates</h3>
@@ -339,7 +346,7 @@ export default function SkillDetailPage() {
                   </div>
                 </div>
               )}
-              
+
               {skill.references.length > 0 && (
                 <div className="references-section">
                   <h3>References ({skill.references.length})</h3>
