@@ -92,6 +92,11 @@ export default function EditAgentPage() {
       </div>
 
       <div className="container" style={{ padding: "var(--space-8)", maxWidth: 900 }}>
+        {error && (
+          <div className="card mb-6" style={{ background: "var(--color-error-muted)" }}>
+            <p style={{ color: "var(--color-error)" }}>⚠️ {error}</p>
+          </div>
+        )}
         {initialData && (
           <AgentForm
             initialData={initialData}

@@ -84,7 +84,17 @@ export default function AgentForm({ initialData, onSubmit, submitLabel = "Save A
   // Reset form when initialData changes (important for edit mode)
   useEffect(() => {
     if (initialData) {
-      reset(initialData);
+      reset({
+        name: initialData.name ?? "",
+        description: initialData.description ?? "",
+        model: initialData.model ?? "gpt-4o-mini",
+        system_prompt: initialData.system_prompt ?? "",
+        temperature: initialData.temperature ?? 0.7,
+        skills: initialData.skills ?? [],
+        integrations: initialData.integrations ?? [],
+        schedule: initialData.schedule ?? "",
+        memory_enabled: initialData.memory_enabled ?? true,
+      });
     }
   }, [initialData, reset]);
 

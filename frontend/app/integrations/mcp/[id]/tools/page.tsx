@@ -126,6 +126,18 @@ export default function MCPToolsPage() {
           <p className="text-secondary" style={{ fontSize: 'var(--font-size-sm)' }}>
             {toolCount} {toolCount === 1 ? 'tool' : 'tools'} discovered
           </p>
+          {error && (
+            <div
+              className="card"
+              style={{
+                marginTop: 'var(--space-4)',
+                borderColor: 'var(--color-error)',
+                background: 'var(--color-error-muted)',
+              }}
+            >
+              <p style={{ color: 'var(--color-error)', margin: 0 }}>⚠️ {error}</p>
+            </div>
+          )}
         </div>
 
         {/* Empty state */}
@@ -246,20 +258,6 @@ export default function MCPToolsPage() {
                 </div>
               );
             })}
-          </div>
-        )}
-
-        {/* Error display (if sync fails) */}
-        {error && (
-          <div
-            className="card"
-            style={{
-              marginTop: 'var(--space-4)',
-              borderColor: 'var(--color-error)',
-              background: 'var(--color-error-muted)',
-            }}
-          >
-            <p style={{ color: 'var(--color-error)', margin: 0 }}>{error}</p>
           </div>
         )}
       </div>

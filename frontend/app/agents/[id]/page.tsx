@@ -26,6 +26,8 @@ export default function AgentDetailPage() {
   // Logs state
   const [logs, setLogs] = useState<Array<{ timestamp: string; level: string; message: string; source: string; execution_id?: string }>>([]);
   const wsRef = useRef<WebSocket | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadAgent = useCallback(async () => {
     try {
@@ -55,6 +57,18 @@ export default function AgentDetailPage() {
       loadAgent();
     }
   }, [id, loadAgent]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+      if (pollTimeoutRef.current) {
+        clearTimeout(pollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // Load executions when history tab is active
@@ -110,17 +124,25 @@ export default function AgentDetailPage() {
       // Reload executions
       await loadExecutions();
       // Set up polling for status updates
-      const pollInterval = setInterval(async () => {
+      pollIntervalRef.current = setInterval(async () => {
         const data = await executionsAPI.list(id, undefined, 50);
         setExecutions(data);
         // Stop polling if latest execution is complete
         if (data[0] && data[0].status !== 'pending' && data[0].status !== 'running') {
-          clearInterval(pollInterval);
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
           loadAgent(); // Refresh stats
         }
       }, 3000);
       // Clear interval after 5 minutes max
-      setTimeout(() => clearInterval(pollInterval), 300000);
+      pollTimeoutRef.current = setTimeout(() => {
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
+      }, 300000);
     } catch (err) {
       console.error('Failed to run agent', err);
       alert('Failed to run agent');
@@ -440,6 +462,15 @@ export default function AgentDetailPage() {
                         <tr
                           className="border-b border-border/50 hover:bg-neutral-muted/50 cursor-pointer"
                           onClick={() => handleExecutionClick(exec.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleExecutionClick(exec.id);
+                            }
+                          }}
+                          tabIndex={0}
+                          role="button"
+                          aria-expanded={selectedExecutionId === exec.id}
                         >
                           <td className="p-3">
                             <span className={`badge ${exec.status === 'success' ? 'badge-success' : exec.status === 'failed' ? 'badge-error' : 'badge-neutral'}`}>
