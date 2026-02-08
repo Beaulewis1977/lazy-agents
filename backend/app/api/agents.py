@@ -6,12 +6,13 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import redact_sensitive_data, redact_sensitive_string, verify_api_key
 from app.models.agent import Agent
+from app.models.execution import Execution
 
 router = APIRouter(dependencies=[Depends(verify_api_key)])
 
@@ -79,20 +80,63 @@ class AgentResponse(BaseModel):
 # =============================================================================
 
 
-@router.get("", response_model=list[AgentResponse])
+@router.get("")
 async def list_agents(
     skip: int = 0,
     limit: int = 50,
     status: str | None = None,
+    include_last_execution: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
-    """List all agents."""
+    """List all agents with optional last execution data."""
     query = select(Agent).offset(skip).limit(limit)
     if status:
         query = query.where(Agent.status == status)
 
     result = await db.execute(query)
-    return result.scalars().all()
+    agents = result.scalars().all()
+
+    # If include_last_execution is True, fetch last execution for each agent
+    if include_last_execution:
+        agents_with_execution = []
+        for agent in agents:
+            agent_dict = AgentResponse.model_validate(agent).model_dump()
+
+            # Query for the most recent execution for this agent
+            exec_query = (
+                select(Execution)
+                .where(Execution.agent_id == agent.id)
+                .order_by(desc(Execution.created_at))
+                .limit(1)
+            )
+            exec_result = await db.execute(exec_query)
+            last_execution = exec_result.scalar_one_or_none()
+
+            # Add last_execution data if it exists
+            if last_execution:
+                agent_dict["last_execution"] = {
+                    "id": last_execution.id,
+                    "status": last_execution.status,
+                    "trigger": last_execution.trigger,
+                    "started_at": last_execution.started_at.isoformat()
+                    if last_execution.started_at
+                    else None,
+                    "completed_at": last_execution.completed_at.isoformat()
+                    if last_execution.completed_at
+                    else None,
+                    "tokens_input": last_execution.tokens_input,
+                    "tokens_output": last_execution.tokens_output,
+                    "error_message": last_execution.error_message,
+                }
+            else:
+                agent_dict["last_execution"] = None
+
+            agents_with_execution.append(agent_dict)
+
+        return agents_with_execution
+
+    # Default behavior - return AgentResponse list
+    return [AgentResponse.model_validate(agent) for agent in agents]
 
 
 @router.post("", response_model=AgentResponse, status_code=status.HTTP_201_CREATED)

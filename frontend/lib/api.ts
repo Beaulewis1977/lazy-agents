@@ -98,6 +98,19 @@ export interface Execution {
   created_at: string;
 }
 
+export interface ExecutionSummaryBrief {
+  id: string;
+  status: string;
+  trigger: string;
+  started_at: string | null;
+  completed_at: string | null;
+  tokens_input: number;
+  tokens_output: number;
+  error_message: string | null;
+}
+
+export type AgentWithExecution = Agent & { last_execution?: ExecutionSummaryBrief };
+
 export interface ExecutionStats {
   total: number;
   successful: number;
@@ -184,8 +197,8 @@ export interface AgentConfig {
 
 // Agents API
 export const agentsAPI = {
-  list: (skip = 0, limit = 100) =>
-    fetchAPI<Agent[]>('/api/agents', { params: { skip, limit } }),
+  list: (skip = 0, limit = 100, include_last_execution?: boolean) =>
+    fetchAPI<AgentWithExecution[]>('/api/agents', { params: { skip, limit, include_last_execution } }),
 
   get: (id: string) =>
     fetchAPI<Agent>(`/api/agents/${id}`),
@@ -193,7 +206,17 @@ export const agentsAPI = {
   getConfig: (id: string) =>
     fetchAPI<AgentConfig>(`/api/agents/${id}/config`),
 
-  create: (data: { name: string; description?: string; model?: string; system_prompt?: string }) =>
+  create: (data: {
+    name: string;
+    description?: string;
+    model?: string;
+    system_prompt?: string;
+    temperature?: number;
+    skills?: string[];
+    integrations?: string[];
+    schedule?: string;
+    memory_enabled?: boolean;
+  }) =>
     fetchAPI<Agent>('/api/agents', { method: 'POST', body: JSON.stringify(data) }),
 
   update: (id: string, data: Partial<Agent>) =>
