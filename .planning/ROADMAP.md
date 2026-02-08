@@ -31,9 +31,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Enforce fail-closed auth and startup validation for production profile
-- [ ] 01-02: Standardize secret masking/redaction across API/UI/log surfaces
-- [ ] 01-03: Harden and verify single-VM Compose deployment baseline
+- [ ] 01-01-PLAN.md — Enforce fail-closed auth and startup validation for production profile
+- [ ] 01-02-PLAN.md — Standardize secret masking/redaction across API/UI/log surfaces
+- [ ] 01-03-PLAN.md — Harden and verify single-VM Compose deployment baseline
 
 ### Phase 2: MCP Server Control Plane
 **Goal**: Operators can configure, run, and manage MCP servers from the platform with clear runtime status.

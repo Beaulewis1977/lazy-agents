@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import { agentsAPI, executionsAPI, AgentConfig, Execution } from "@/lib/api";
@@ -15,7 +15,7 @@ export default function AgentDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'skills' | 'schedule' | 'logs' | 'history'>('overview');
-  
+
   // Schedule state
   const [schedule, setSchedule] = useState<string>("");
   const [savingSchedule, setSavingSchedule] = useState(false);
@@ -24,31 +24,51 @@ export default function AgentDetailPage() {
   const [logs, setLogs] = useState<Array<{ timestamp: string; level: string; message: string; source: string; execution_id?: string }>>([]);
   const wsRef = useRef<WebSocket | null>(null);
 
+  const loadAgent = useCallback(async () => {
+    try {
+      setError(null);
+      setLoading(true);
+      const data = await agentsAPI.getConfig(id);
+      setAgent(data);
+      setSchedule(data.schedule || "");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load agent');
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  const loadExecutions = useCallback(async () => {
+    try {
+      const data = await executionsAPI.list(id, undefined, 50);
+      setExecutions(data);
+    } catch (err) {
+      console.error('Failed to load executions', err);
+    }
+  }, [id]);
+
   useEffect(() => {
     if (id) {
       loadAgent();
     }
-  }, [id]);
+  }, [id, loadAgent]);
 
   useEffect(() => {
     // Load executions when history tab is active
     if (activeTab === 'history' && id) {
       loadExecutions();
     }
-    
+
     // Connect to global logs when Logs tab is active
     if (activeTab === 'logs') {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.hostname}:8000/api/ws/logs`; // Adjust port/path if needed
-      
       // Use standard WebSocket - assuming straightforward localhost default for now
       // In production, use window.location.host
       const ws = new WebSocket('ws://localhost:8000/ws/logs');
-      
+
       ws.onopen = () => {
         console.log('Connected to logs');
       };
-      
+
       ws.onmessage = (event) => {
         try {
           const log = JSON.parse(event.data);
@@ -64,29 +84,7 @@ export default function AgentDetailPage() {
         ws.close();
       };
     }
-  }, [activeTab, id]);
-
-  async function loadAgent() {
-    try {
-      setLoading(true);
-      const data = await agentsAPI.getConfig(id);
-      setAgent(data);
-      setSchedule(data.schedule || "");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load agent');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadExecutions() {
-    try {
-      const data = await executionsAPI.list(id, undefined, 50);
-      setExecutions(data);
-    } catch (err) {
-      console.error('Failed to load executions', err);
-    }
-  }
+  }, [activeTab, id, loadExecutions]);
 
   async function handleToggleStatus() {
     if (!agent) return;
@@ -95,6 +93,7 @@ export default function AgentDetailPage() {
       await agentsAPI.update(agent.id, { status: newStatus });
       setAgent({ ...agent, status: newStatus });
     } catch (err) {
+      console.error('Failed to update status', err);
       alert('Failed to update status');
     }
   }
@@ -111,6 +110,7 @@ export default function AgentDetailPage() {
         if (activeTab === 'history') loadExecutions();
       }, 2000);
     } catch (err) {
+      console.error('Failed to run agent', err);
       alert('Failed to run agent');
     }
   }
@@ -121,6 +121,7 @@ export default function AgentDetailPage() {
       await agentsAPI.delete(agent.id);
       router.push('/agents');
     } catch (err) {
+      console.error('Failed to delete agent', err);
       alert('Failed to delete agent');
     }
   }
@@ -136,6 +137,7 @@ export default function AgentDetailPage() {
       setAgent(updated);
       alert('Schedule updated!');
     } catch (err) {
+      console.error('Failed to update schedule', err);
       alert('Failed to update schedule');
     } finally {
       setSavingSchedule(false);
@@ -174,7 +176,7 @@ export default function AgentDetailPage() {
       </div>
 
       <div className="container" style={{ padding: "var(--space-8)" }}>
-        
+
         {/* Tabs */}
         <div className="tabs mb-6 border-b border-border flex gap-4 overflow-x-auto">
           {(['overview', 'skills', 'schedule', 'logs', 'history'] as const).map(tab => (
@@ -204,7 +206,7 @@ export default function AgentDetailPage() {
                 </pre>
               </div>
             </div>
-            
+
             <div className="space-y-6">
               <div className="card">
                 <h3 className="mb-4">Configuration</h3>
@@ -253,7 +255,7 @@ export default function AgentDetailPage() {
                 <h3 className="mb-0">Enabled Skills ({agent.skills.length})</h3>
                 <Link href={`/skills`} className="btn btn-sm btn-ghost">Manage Skills →</Link>
               </div>
-              
+
               {agent.skills.length === 0 ? (
                 <p className="text-muted">No skills enabled.</p>
               ) : (
@@ -273,7 +275,7 @@ export default function AgentDetailPage() {
                 </div>
               )}
             </div>
-            
+
             <div className="card">
               <h3 className="mb-4">Integrations ({agent.integrations.length})</h3>
               {agent.integrations.length === 0 ? (
@@ -304,7 +306,7 @@ export default function AgentDetailPage() {
             <p className="text-secondary mb-6">
               Configure a cron schedule for this agent to run automatically.
             </p>
-            
+
             <div className="input-group mb-6">
               <label className="input-label">Cron Expression</label>
               <input
@@ -333,8 +335,8 @@ export default function AgentDetailPage() {
                   <p className="text-sm text-muted">No active schedule</p>
                 )}
               </div>
-              <button 
-                onClick={handleSaveSchedule} 
+              <button
+                onClick={handleSaveSchedule}
                 className="btn btn-primary"
                 disabled={savingSchedule}
               >
@@ -362,7 +364,7 @@ export default function AgentDetailPage() {
                 <div key={i} className="flex gap-3 hover:bg-white/5 p-1 rounded">
                   <span className="text-gray-500 shrink-0 w-24">{new Date(log.timestamp).toLocaleTimeString()}</span>
                   <span className={`shrink-0 w-16 font-bold ${
-                    log.level === 'error' ? 'text-red-400' : 
+                    log.level === 'error' ? 'text-red-400' :
                     log.level === 'warn' ? 'text-yellow-400' : 'text-blue-400'
                   }`}>
                     {log.level.toUpperCase()}
@@ -408,8 +410,8 @@ export default function AgentDetailPage() {
                         <td className="p-3"><span className="badge badge-neutral text-xs">{exec.trigger}</span></td>
                         <td className="p-3 text-secondary">{exec.started_at ? new Date(exec.started_at).toLocaleString() : '-'}</td>
                         <td className="p-3 text-secondary">
-                          {exec.completed_at && exec.started_at ? 
-                            `${((new Date(exec.completed_at).getTime() - new Date(exec.started_at).getTime()) / 1000).toFixed(1)}s` 
+                          {exec.completed_at && exec.started_at ?
+                            `${((new Date(exec.completed_at).getTime() - new Date(exec.started_at).getTime()) / 1000).toFixed(1)}s`
                             : '-'}
                         </td>
                         <td className="p-3 text-secondary">{(exec.tokens_input + exec.tokens_output).toLocaleString()}</td>

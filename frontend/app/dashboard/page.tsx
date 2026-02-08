@@ -26,7 +26,7 @@ export default function Dashboard() {
           executionsAPI.list(undefined, undefined, 10),
           executionsAPI.stats(),
         ]);
-        
+
         setAgents(agentsList);
         setExecutions(execsList);
         setStats({
@@ -59,8 +59,8 @@ export default function Dashboard() {
         <div>
           <h1 className="header-title">Dashboard</h1>
           <p className="text-sm text-secondary mt-2">
-            {agents.length === 0 
-              ? "Create your first agent to get started!" 
+            {agents.length === 0
+              ? "Create your first agent to get started!"
               : `You have ${stats.activeAgents} active agent${stats.activeAgents !== 1 ? 's' : ''}`}
           </p>
         </div>
@@ -209,7 +209,7 @@ function formatRelativeTime(dateStr: string): string {
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
-  
+
   if (diffMins < 1) return 'just now';
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;

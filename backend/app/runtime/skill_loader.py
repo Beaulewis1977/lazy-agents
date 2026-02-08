@@ -5,66 +5,71 @@ Supports loading skills from:
 - Skill folders containing SKILL.md + templates, assets, references
 """
 
-import os
-import re
-import yaml
 import json
-from pathlib import Path
-from typing import List, Dict, Any, Optional
+import logging
+import re
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, ClassVar
+
+import yaml
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
 class SkillParameter:
     """A parameter for a skill."""
+
     name: str
     type: str
     description: str
     required: bool = True
     default: Any = None
-    enum: Optional[List[str]] = None
+    enum: list[str] | None = None
 
 
 @dataclass
 class LoadedSkill:
     """A skill loaded from the filesystem."""
+
     id: str
     name: str
     description: str
     category: str
-    parameters: List[SkillParameter]
+    parameters: list[SkillParameter]
     instructions: str
-    integration_required: Optional[str] = None
-    templates: Dict[str, str] = field(default_factory=dict)
-    assets: List[str] = field(default_factory=list)
-    references: List[str] = field(default_factory=list)
+    integration_required: str | None = None
+    templates: dict[str, str] = field(default_factory=dict)
+    assets: list[str] = field(default_factory=list)
+    references: list[str] = field(default_factory=list)
     source_path: str = ""
     is_builtin: bool = False
 
 
 class SkillLoader:
     """Load skills from filesystem."""
-    
+
     # Default skill directories to scan
-    DEFAULT_SKILL_DIRS = [
+    DEFAULT_SKILL_DIRS: ClassVar[list[str]] = [
         "~/.lazyagents/skills",
         "./skills",
         "./data/skills",
     ]
-    
-    def __init__(self, skill_dirs: Optional[List[str]] = None):
+
+    def __init__(self, skill_dirs: list[str] | None = None):
         self.skill_dirs = skill_dirs or self.DEFAULT_SKILL_DIRS
-        self._skills_cache: Dict[str, LoadedSkill] = {}
-    
-    def load_all_skills(self) -> List[LoadedSkill]:
+        self._skills_cache: dict[str, LoadedSkill] = {}
+
+    def load_all_skills(self) -> list[LoadedSkill]:
         """Load all skills from configured directories."""
         skills = []
-        
+
         for skill_dir in self.skill_dirs:
             expanded_dir = Path(skill_dir).expanduser()
             if not expanded_dir.exists():
                 continue
-            
+
             # Scan for .md files (single-file skills)
             for md_file in expanded_dir.glob("*.md"):
                 if md_file.name.lower() == "readme.md":
@@ -73,7 +78,7 @@ class SkillLoader:
                 if skill:
                     skills.append(skill)
                     self._skills_cache[skill.id] = skill
-            
+
             # Scan for skill folders (containing SKILL.md)
             for skill_folder in expanded_dir.iterdir():
                 if skill_folder.is_dir():
@@ -83,50 +88,52 @@ class SkillLoader:
                         if skill:
                             skills.append(skill)
                             self._skills_cache[skill.id] = skill
-        
+
         return skills
-    
-    def load_skill_from_path(self, path: str) -> Optional[LoadedSkill]:
+
+    def load_skill_from_path(self, path: str) -> LoadedSkill | None:
         """Load a skill from a specific path (file or folder)."""
         path_obj = Path(path).expanduser()
-        
+
         if path_obj.is_file() and path_obj.suffix == ".md":
             return self._load_md_skill(path_obj)
         elif path_obj.is_dir():
             skill_md = path_obj / "SKILL.md"
             if skill_md.exists():
                 return self._load_folder_skill(path_obj)
-        
+
         return None
-    
-    def get_skill(self, skill_id: str) -> Optional[LoadedSkill]:
+
+    def get_skill(self, skill_id: str) -> LoadedSkill | None:
         """Get a skill by ID from cache."""
         return self._skills_cache.get(skill_id)
-    
-    def _load_md_skill(self, md_file: Path) -> Optional[LoadedSkill]:
+
+    def _load_md_skill(self, md_file: Path) -> LoadedSkill | None:
         """Load a skill from a single .md file."""
         try:
             content = md_file.read_text(encoding="utf-8")
             frontmatter, body = self._parse_frontmatter(content)
-            
+
             if not frontmatter:
                 return None
-            
+
             # Generate skill ID from filename
             skill_id = frontmatter.get("id", md_file.stem.lower().replace(" ", "_"))
-            
+
             # Parse parameters from frontmatter
             params = []
             for param_data in frontmatter.get("parameters", []):
-                params.append(SkillParameter(
-                    name=param_data.get("name", ""),
-                    type=param_data.get("type", "string"),
-                    description=param_data.get("description", ""),
-                    required=param_data.get("required", True),
-                    default=param_data.get("default"),
-                    enum=param_data.get("enum"),
-                ))
-            
+                params.append(
+                    SkillParameter(
+                        name=param_data.get("name", ""),
+                        type=param_data.get("type", "string"),
+                        description=param_data.get("description", ""),
+                        required=param_data.get("required", True),
+                        default=param_data.get("default"),
+                        enum=param_data.get("enum"),
+                    )
+                )
+
             return LoadedSkill(
                 id=skill_id,
                 name=frontmatter.get("name", md_file.stem),
@@ -139,35 +146,37 @@ class SkillLoader:
                 is_builtin=False,
             )
         except Exception as e:
-            print(f"Error loading skill from {md_file}: {e}")
+            logger.warning(f"Error loading skill from {md_file}: {e}")
             return None
-    
-    def _load_folder_skill(self, skill_folder: Path) -> Optional[LoadedSkill]:
+
+    def _load_folder_skill(self, skill_folder: Path) -> LoadedSkill | None:
         """Load a skill from a folder containing SKILL.md."""
         skill_md = skill_folder / "SKILL.md"
-        
+
         try:
             content = skill_md.read_text(encoding="utf-8")
             frontmatter, body = self._parse_frontmatter(content)
-            
+
             if not frontmatter:
                 return None
-            
+
             # Generate skill ID from folder name
             skill_id = frontmatter.get("id", skill_folder.name.lower().replace(" ", "_"))
-            
+
             # Parse parameters
             params = []
             for param_data in frontmatter.get("parameters", []):
-                params.append(SkillParameter(
-                    name=param_data.get("name", ""),
-                    type=param_data.get("type", "string"),
-                    description=param_data.get("description", ""),
-                    required=param_data.get("required", True),
-                    default=param_data.get("default"),
-                    enum=param_data.get("enum"),
-                ))
-            
+                params.append(
+                    SkillParameter(
+                        name=param_data.get("name", ""),
+                        type=param_data.get("type", "string"),
+                        description=param_data.get("description", ""),
+                        required=param_data.get("required", True),
+                        default=param_data.get("default"),
+                        enum=param_data.get("enum"),
+                    )
+                )
+
             # Load templates
             templates = {}
             templates_dir = skill_folder / "templates"
@@ -175,7 +184,7 @@ class SkillLoader:
                 for template_file in templates_dir.glob("*"):
                     if template_file.is_file():
                         templates[template_file.name] = template_file.read_text(encoding="utf-8")
-            
+
             # Collect assets
             assets = []
             assets_dir = skill_folder / "assets"
@@ -183,14 +192,14 @@ class SkillLoader:
                 for asset_file in assets_dir.glob("*"):
                     if asset_file.is_file():
                         assets.append(str(asset_file))
-            
+
             # Collect references
             references = []
             refs_dir = skill_folder / "references"
             if refs_dir.exists():
                 for ref_file in refs_dir.glob("*.md"):
                     references.append(ref_file.read_text(encoding="utf-8"))
-            
+
             return LoadedSkill(
                 id=skill_id,
                 name=frontmatter.get("name", skill_folder.name),
@@ -206,26 +215,28 @@ class SkillLoader:
                 is_builtin=False,
             )
         except Exception as e:
-            print(f"Error loading skill from {skill_folder}: {e}")
+            logger.warning(f"Error loading skill from {skill_folder}: {e}")
             return None
-    
-    def _parse_frontmatter(self, content: str) -> tuple[Optional[Dict[str, Any]], str]:
+
+    def _parse_frontmatter(self, content: str) -> tuple[dict[str, Any] | None, str]:
         """Parse YAML frontmatter from markdown content."""
         # Match YAML frontmatter between ---
         frontmatter_pattern = r"^---\s*\n(.*?)\n---\s*\n(.*)$"
         match = re.match(frontmatter_pattern, content, re.DOTALL)
-        
+
         if not match:
             return None, content
-        
+
         try:
             frontmatter = yaml.safe_load(match.group(1))
+            if not isinstance(frontmatter, dict):
+                return None, content
             body = match.group(2)
             return frontmatter, body
         except yaml.YAMLError:
             return None, content
-    
-    def to_db_format(self, skill: LoadedSkill) -> Dict[str, Any]:
+
+    def to_db_format(self, skill: LoadedSkill) -> dict[str, Any]:
         """Convert a loaded skill to database format."""
         parameters = {}
         for param in skill.parameters:
@@ -238,7 +249,7 @@ class SkillLoader:
             if param.enum:
                 param_def["enum"] = param.enum
             parameters[param.name] = param_def
-        
+
         return {
             "id": skill.id,
             "name": skill.name,
@@ -248,17 +259,19 @@ class SkillLoader:
             "integration_required": skill.integration_required,
             "is_builtin": skill.is_builtin,
             "implementation_type": "prompt",
-            "implementation": json.dumps({
-                "instructions": skill.instructions,
-                "templates": skill.templates,
-                "references": skill.references,
-            }),
+            "implementation": json.dumps(
+                {
+                    "instructions": skill.instructions,
+                    "templates": skill.templates,
+                    "references": skill.references,
+                }
+            ),
             "source_path": skill.source_path,
         }
 
 
 # Example skill markdown format:
-EXAMPLE_SKILL_MD = '''---
+EXAMPLE_SKILL_MD = """---
 name: Summarize Repository
 description: Analyze a GitHub repository and create a summary of its purpose and structure
 category: github
@@ -309,4 +322,4 @@ This is a web application for managing tasks...
 - PostgreSQL
 ...
 ```
-'''
+"""

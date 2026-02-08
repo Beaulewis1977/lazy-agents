@@ -11,6 +11,14 @@ interface Settings {
   api_key: string;
 }
 
+const DEFAULT_SETTINGS: Settings = {
+  openai_key: "",
+  anthropic_key: "",
+  google_key: "",
+  default_model: "gpt-4o-mini",
+  api_key: "",
+};
+
 const MODELS = [
   { id: "gpt-4o-mini", name: "GPT-4o Mini (OpenAI)" },
   { id: "gpt-4o", name: "GPT-4o (OpenAI)" },
@@ -19,28 +27,28 @@ const MODELS = [
   { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro (Google)" },
 ];
 
+function loadSettingsFromStorage(): Settings {
+  if (typeof window === 'undefined') return DEFAULT_SETTINGS;
+  const savedSettings = localStorage.getItem('lazyagents_settings');
+  if (savedSettings) {
+    try {
+      const parsed = JSON.parse(savedSettings) as Partial<Settings>;
+      return { ...DEFAULT_SETTINGS, ...parsed };
+    } catch {
+      // ignore parse errors
+    }
+  }
+  return DEFAULT_SETTINGS;
+}
+
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<Settings>({
-    openai_key: "",
-    anthropic_key: "",
-    google_key: "",
-    default_model: "gpt-4o-mini",
-    api_key: "",
-  });
+  const [settings, setSettings] = useState<Settings>(loadSettingsFromStorage);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [health, setHealth] = useState<{ status: string; version: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load settings from localStorage
-    const savedSettings = localStorage.getItem('lazyagents_settings');
-    if (savedSettings) {
-      try {
-        setSettings(JSON.parse(savedSettings));
-      } catch {}
-    }
-
     // Check health
     healthAPI.check()
       .then(setHealth)
@@ -50,10 +58,10 @@ export default function SettingsPage() {
   function handleSave() {
     setSaving(true);
     setSaved(false);
-    
+
     // Save to localStorage
     localStorage.setItem('lazyagents_settings', JSON.stringify(settings));
-    
+
     // In a real app, you'd also save to the backend
     setTimeout(() => {
       setSaving(false);
@@ -194,7 +202,7 @@ export default function SettingsPage() {
             LazyAgents is self-hosted. All your data stays on your machine.
           </p>
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={() => {
                 if (confirm('Export all your data as JSON?')) {
                   const data = { settings, exportedAt: new Date().toISOString() };
@@ -205,7 +213,7 @@ export default function SettingsPage() {
                   a.download = 'lazyagents-export.json';
                   a.click();
                 }
-              }} 
+              }}
               className="btn btn-secondary"
             >
               📥 Export Data

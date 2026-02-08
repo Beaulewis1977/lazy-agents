@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { executionsAPI, agentsAPI, Execution, Agent } from "@/lib/api";
 
@@ -11,11 +11,7 @@ export default function ExecutionsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [agentFilter, setAgentFilter] = useState<string>("");
 
-  useEffect(() => {
-    loadData();
-  }, [statusFilter, agentFilter]);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       const [execsList, agentsList] = await Promise.all([
         executionsAPI.list(agentFilter || undefined, statusFilter || undefined, 100),
@@ -31,7 +27,11 @@ export default function ExecutionsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [agentFilter, statusFilter]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   async function handleCancel(id: string) {
     try {

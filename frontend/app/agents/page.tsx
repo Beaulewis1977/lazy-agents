@@ -118,8 +118,8 @@ export default function AgentsPage() {
                       </div>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => handleToggleStatus(agent)} 
+                  <button
+                    onClick={() => handleToggleStatus(agent)}
                     className={`btn btn-sm ${agent.status === 'active' ? 'btn-ghost' : 'btn-secondary'}`}
                   >
                     {agent.status === 'active' ? '⏸️ Pause' : '▶️ Activate'}
@@ -143,8 +143,8 @@ export default function AgentsPage() {
                   <Link href={`/agents/${agent.id}`} className="btn btn-secondary btn-sm flex-1">
                     ⚙️ Configure
                   </Link>
-                  <button 
-                    onClick={() => handleDelete(agent.id)} 
+                  <button
+                    onClick={() => handleDelete(agent.id)}
                     className="btn btn-ghost btn-sm"
                     disabled={deleting === agent.id}
                   >
