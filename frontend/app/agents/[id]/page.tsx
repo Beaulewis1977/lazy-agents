@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
-import { agentsAPI, executionsAPI, AgentConfig, Execution } from "@/lib/api";
+import { agentsAPI, executionsAPI, AgentConfig, Execution, ExecutionDetail } from "@/lib/api";
 import Link from "next/link";
 
 export default function AgentDetailPage() {
@@ -16,24 +16,7 @@ export default function AgentDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'skills' | 'schedule' | 'logs' | 'history'>('overview');
   const [selectedExecutionId, setSelectedExecutionId] = useState<string | null>(null);
-  const [selectedExecutionDetails, setSelectedExecutionDetails] = useState<{
-    id: string;
-    status: string;
-    started_at: string | null;
-    completed_at: string | null;
-    tokens_input: number;
-    tokens_output: number;
-    output_data: Record<string, unknown> | null;
-    error_message: string | null;
-    steps: Array<{
-      id: string;
-      step_number: number;
-      name: string;
-      step_type: string;
-      status: string;
-      error_message: string | null;
-    }>;
-  } | null>(null);
+  const [selectedExecutionDetails, setSelectedExecutionDetails] = useState<ExecutionDetail | null>(null);
   const [loadingExecution, setLoadingExecution] = useState(false);
 
   // Schedule state

@@ -98,6 +98,25 @@ export interface Execution {
   created_at: string;
 }
 
+export interface ExecutionStep {
+  id: string;
+  step_number: number;
+  name: string;
+  step_type: string;
+  status: string;
+  started_at: string | null;
+  completed_at: string | null;
+  input_data: Record<string, unknown>;
+  output_data: Record<string, unknown> | null;
+  error_message: string | null;
+}
+
+export interface ExecutionDetail extends Execution {
+  output_data: Record<string, unknown> | null;
+  input_data: Record<string, unknown>;
+  steps: ExecutionStep[];
+}
+
 export interface ExecutionSummaryBrief {
   id: string;
   status: string;
@@ -337,7 +356,7 @@ export const executionsAPI = {
     fetchAPI<Execution[]>('/api/executions', { params: { agent_id: agentId, status, limit } }),
 
   get: (id: string) =>
-    fetchAPI<Execution & { steps: unknown[] }>(`/api/executions/${id}`),
+    fetchAPI<ExecutionDetail>(`/api/executions/${id}`),
 
   stats: () =>
     fetchAPI<ExecutionStats>('/api/executions/stats'),
