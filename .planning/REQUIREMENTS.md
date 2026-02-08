@@ -68,30 +68,30 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CTRL-01 | TBD | Pending |
-| CTRL-02 | TBD | Pending |
-| CTRL-03 | TBD | Pending |
-| MCP-01 | TBD | Pending |
-| MCP-02 | TBD | Pending |
-| MCP-03 | TBD | Pending |
-| MCP-04 | TBD | Pending |
-| MCP-05 | TBD | Pending |
-| MRT-01 | TBD | Pending |
-| MRT-02 | TBD | Pending |
-| MRT-03 | TBD | Pending |
-| SEC-01 | TBD | Pending |
-| SEC-02 | TBD | Pending |
-| SEC-03 | TBD | Pending |
-| SEC-04 | TBD | Pending |
-| OPS-01 | TBD | Pending |
-| OPS-02 | TBD | Pending |
-| OPS-03 | TBD | Pending |
+| CTRL-01 | Phase 3 | Pending |
+| CTRL-02 | Phase 3 | Pending |
+| CTRL-03 | Phase 3 | Pending |
+| MCP-01 | Phase 2 | Pending |
+| MCP-02 | Phase 2 | Pending |
+| MCP-03 | Phase 2 | Pending |
+| MCP-04 | Phase 2 | Pending |
+| MCP-05 | Phase 3 | Pending |
+| MRT-01 | Phase 4 | Pending |
+| MRT-02 | Phase 4 | Pending |
+| MRT-03 | Phase 4 | Pending |
+| SEC-01 | Phase 1 | Pending |
+| SEC-02 | Phase 1 | Pending |
+| SEC-03 | Phase 1 | Pending |
+| SEC-04 | Phase 1 | Pending |
+| OPS-01 | Phase 1 | Pending |
+| OPS-02 | Phase 5 | Pending |
+| OPS-03 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18 ⚠️
+- Mapped to phases: 18
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-02-08*
-*Last updated: 2026-02-08 after initial definition*
+*Last updated: 2026-02-08 after roadmap traceability mapping*
