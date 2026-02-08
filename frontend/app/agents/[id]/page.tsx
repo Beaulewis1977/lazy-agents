@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import { agentsAPI, executionsAPI, AgentConfig, Execution } from "@/lib/api";
@@ -24,26 +24,46 @@ export default function AgentDetailPage() {
   const [logs, setLogs] = useState<Array<{ timestamp: string; level: string; message: string; source: string; execution_id?: string }>>([]);
   const wsRef = useRef<WebSocket | null>(null);
 
-  useEffect(() => {
-    if (id) {
-      loadAgent();
+  const loadAgent = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await agentsAPI.getConfig(id);
+      setAgent(data);
+      setSchedule(data.schedule || "");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load agent");
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  const loadExecutions = useCallback(async () => {
+    try {
+      const data = await executionsAPI.list(id, undefined, 50);
+      setExecutions(data);
+    } catch {
+      // Best-effort background load.
     }
   }, [id]);
 
   useEffect(() => {
+    if (id) {
+      void loadAgent();
+    }
+  }, [id, loadAgent]);
+
+  useEffect(() => {
     // Load executions when history tab is active
     if (activeTab === 'history' && id) {
-      loadExecutions();
+      void loadExecutions();
     }
     
     // Connect to global logs when Logs tab is active
     if (activeTab === 'logs') {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.hostname}:8000/api/ws/logs`; // Adjust port/path if needed
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${protocol}//${window.location.hostname}:8000/ws/logs`;
       
-      // Use standard WebSocket - assuming straightforward localhost default for now
-      // In production, use window.location.host
-      const ws = new WebSocket('ws://localhost:8000/ws/logs');
+      const ws = new WebSocket(wsUrl);
       
       ws.onopen = () => {
         console.log('Connected to logs');
@@ -64,29 +84,7 @@ export default function AgentDetailPage() {
         ws.close();
       };
     }
-  }, [activeTab, id]);
-
-  async function loadAgent() {
-    try {
-      setLoading(true);
-      const data = await agentsAPI.getConfig(id);
-      setAgent(data);
-      setSchedule(data.schedule || "");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load agent');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadExecutions() {
-    try {
-      const data = await executionsAPI.list(id, undefined, 50);
-      setExecutions(data);
-    } catch (err) {
-      console.error('Failed to load executions', err);
-    }
-  }
+  }, [activeTab, id, loadExecutions]);
 
   async function handleToggleStatus() {
     if (!agent) return;
@@ -94,7 +92,7 @@ export default function AgentDetailPage() {
     try {
       await agentsAPI.update(agent.id, { status: newStatus });
       setAgent({ ...agent, status: newStatus });
-    } catch (err) {
+    } catch {
       alert('Failed to update status');
     }
   }
@@ -107,10 +105,10 @@ export default function AgentDetailPage() {
       setActiveTab('logs');
       // Also refresh stats/executions in background
       setTimeout(() => {
-        loadAgent();
-        if (activeTab === 'history') loadExecutions();
+        void loadAgent();
+        if (activeTab === 'history') void loadExecutions();
       }, 2000);
-    } catch (err) {
+    } catch {
       alert('Failed to run agent');
     }
   }
@@ -120,7 +118,7 @@ export default function AgentDetailPage() {
     try {
       await agentsAPI.delete(agent.id);
       router.push('/agents');
-    } catch (err) {
+    } catch {
       alert('Failed to delete agent');
     }
   }
@@ -135,7 +133,7 @@ export default function AgentDetailPage() {
       const updated = await agentsAPI.getConfig(agent.id);
       setAgent(updated);
       alert('Schedule updated!');
-    } catch (err) {
+    } catch {
       alert('Failed to update schedule');
     } finally {
       setSavingSchedule(false);

@@ -1,16 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import { api } from "@/lib/api";
+
+interface SkillParameter {
+  type?: string;
+  description?: string;
+  default?: unknown;
+  enum?: string[];
+}
 
 interface SkillConfig {
   id: string;
   name: string;
   description: string;
   category: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   integration_required: string | null;
   is_builtin: boolean;
   implementation_type: string;
@@ -18,6 +25,10 @@ interface SkillConfig {
   templates: Record<string, string>;
   references: string[];
   source_path: string | null;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Request failed";
 }
 
 export default function SkillDetailPage() {
@@ -38,11 +49,7 @@ export default function SkillDetailPage() {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "parameters" | "implementation" | "files">("overview");
 
-  useEffect(() => {
-    loadSkill();
-  }, [skillId]);
-
-  async function loadSkill() {
+  const loadSkill = useCallback(async () => {
     try {
       setLoading(true);
       const data = await api.skills.getConfig(skillId);
@@ -53,12 +60,16 @@ export default function SkillDetailPage() {
         category: data.category,
         implementation: data.implementation || "",
       });
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
-  }
+  }, [skillId]);
+
+  useEffect(() => {
+    void loadSkill();
+  }, [loadSkill]);
 
   async function handleSave() {
     try {
@@ -66,8 +77,8 @@ export default function SkillDetailPage() {
       await api.skills.update(skillId, editData);
       await loadSkill();
       setEditing(false);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -79,8 +90,8 @@ export default function SkillDetailPage() {
     try {
       await api.skills.delete(skillId);
       router.push("/skills");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     }
   }
 
@@ -257,27 +268,37 @@ export default function SkillDetailPage() {
                 <p className="empty-message">This skill has no parameters</p>
               ) : (
                 <div className="parameters-list">
-                  {Object.entries(skill.parameters).map(([name, param]) => (
-                    <div key={name} className="parameter-card">
-                      <div className="param-header">
-                        <code className="param-name">{name}</code>
-                        <span className="param-type">{param.type}</span>
+                  {Object.entries(skill.parameters).map(([name, rawParam]) => {
+                    const param: SkillParameter =
+                      rawParam && typeof rawParam === "object"
+                        ? (rawParam as SkillParameter)
+                        : {};
+                    const enumValues = Array.isArray(param.enum) ? param.enum : [];
+
+                    return (
+                      <div key={name} className="parameter-card">
+                        <div className="param-header">
+                          <code className="param-name">{name}</code>
+                          <span className="param-type">{param.type ?? "unknown"}</span>
+                        </div>
+                        <p className="param-description">
+                          {param.description ?? "No description"}
+                        </p>
+                        {param.default !== undefined && (
+                          <div className="param-default">
+                            Default: <code>{JSON.stringify(param.default)}</code>
+                          </div>
+                        )}
+                        {enumValues.length > 0 && (
+                          <div className="param-enum">
+                            Options: {enumValues.map((value) => (
+                              <code key={value}>{value}</code>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <p className="param-description">{param.description}</p>
-                      {param.default !== undefined && (
-                        <div className="param-default">
-                          Default: <code>{JSON.stringify(param.default)}</code>
-                        </div>
-                      )}
-                      {param.enum && (
-                        <div className="param-enum">
-                          Options: {param.enum.map((v: string) => (
-                            <code key={v}>{v}</code>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

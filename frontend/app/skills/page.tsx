@@ -16,6 +16,12 @@ const CATEGORY_ICONS: Record<string, string> = {
   custom: "🔧",
 };
 
+interface ImportScanResult {
+  id: string;
+  status: string;
+  error?: string;
+}
+
 export default function SkillsPage() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +38,11 @@ export default function SkillsPage() {
   const [importPath, setImportPath] = useState("");
   const [importType, setImportType] = useState<'file' | 'directory'>('file');
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{message?: string, skills_found?: number, results?: any[]} | null>(null);
+  const [importResult, setImportResult] = useState<{
+    message?: string;
+    skills_found?: number;
+    results?: ImportScanResult[];
+  } | null>(null);
 
   useEffect(() => {
     loadSkills();
@@ -185,7 +195,7 @@ export default function SkillsPage() {
                       <div>
                         <p className="font-bold">Scanned {importResult.skills_found} skills</p>
                         <ul className="list-disc pl-4 mt-1 text-xs max-h-32 overflow-auto">
-                          {importResult.results?.map((r: any) => (
+                          {importResult.results?.map((r) => (
                             <li key={r.id} className={r.status === 'error' ? 'text-error' : 'text-success'}>
                               {r.id}: {r.status} {r.error ? `(${r.error})` : ''}
                             </li>

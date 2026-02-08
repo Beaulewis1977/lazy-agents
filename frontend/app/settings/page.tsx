@@ -19,28 +19,40 @@ const MODELS = [
   { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro (Google)" },
 ];
 
-export default function SettingsPage() {
-  const [settings, setSettings] = useState<Settings>({
+function getInitialSettings(): Settings {
+  const defaults: Settings = {
     openai_key: "",
     anthropic_key: "",
     google_key: "",
     default_model: "gpt-4o-mini",
     api_key: "",
-  });
+  };
+
+  if (typeof window === "undefined") {
+    return defaults;
+  }
+
+  const savedSettings = window.localStorage.getItem("lazyagents_settings");
+  if (!savedSettings) {
+    return defaults;
+  }
+
+  try {
+    const parsed = JSON.parse(savedSettings) as Partial<Settings>;
+    return { ...defaults, ...parsed };
+  } catch {
+    return defaults;
+  }
+}
+
+export default function SettingsPage() {
+  const [settings, setSettings] = useState<Settings>(getInitialSettings);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [health, setHealth] = useState<{ status: string; version: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load settings from localStorage
-    const savedSettings = localStorage.getItem('lazyagents_settings');
-    if (savedSettings) {
-      try {
-        setSettings(JSON.parse(savedSettings));
-      } catch {}
-    }
-
     // Check health
     healthAPI.check()
       .then(setHealth)
