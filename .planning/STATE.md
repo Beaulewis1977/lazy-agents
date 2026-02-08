@@ -10,27 +10,27 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 ## Current Position
 
 Phase: 1 of 5 (Security and Deployment Baseline)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-08 — Completed 01-02-PLAN.md
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-08 — Completed 01-03-PLAN.md
 
-Progress: [██░░░░░░░░] 13%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 4 min
-- Total execution time: 0.13 hours
+- Total plans completed: 3
+- Average duration: 3 min
+- Total execution time: 0.15 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 | 2 | 8 min | 4 min |
+| 1 | 3 | 9 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (1 min), 01-02 (7 min)
+- Last 5 plans: 01-01 (1 min), 01-02 (7 min), 01-03 (1 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -48,6 +48,8 @@ Recent decisions affecting current work:
 - Phase 01-01: Protected APIs are fail-closed outside development when API auth is unconfigured.
 - Phase 01-02: Redaction helper is centralized and applied at persistence, log emission, and API response boundaries.
 - Phase 01-02: Settings UI stores only non-sensitive preferences; secrets remain transient session inputs.
+- Phase 01-03: Production deployment path is explicit via `docker-compose.yml` + `compose.production.yaml` merge.
+- Phase 01-03: Operator setup docs now include production env guardrails and `/health` + `/health/ready` verification steps.
 
 ### Pending Todos
 
@@ -60,6 +62,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-08 05:15
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-02-08 05:18
+Stopped at: Completed 01-03-PLAN.md
 Resume file: None
