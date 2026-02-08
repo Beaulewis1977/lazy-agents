@@ -82,6 +82,11 @@ class Settings(BaseSettings):
         return salt
 
     @property
+    def is_production_like(self) -> bool:
+        """Check if runtime should enforce production security posture."""
+        return not self.is_development
+
+    @property
     def available_providers(self) -> list[str]:
         """Get list of configured LLM providers."""
         providers = []
@@ -100,3 +105,38 @@ class Settings(BaseSettings):
 
 # Create global settings instance
 settings = Settings()
+
+_INSECURE_SECRET_KEY_VALUES = {
+    "",
+    "change-me-in-production-please",
+    "changeme",
+    "secret",
+    "default",
+}
+_MIN_SECRET_KEY_LENGTH = 32
+
+
+def _is_secret_key_secure(secret_key: str) -> bool:
+    candidate = secret_key.strip()
+    if len(candidate) < _MIN_SECRET_KEY_LENGTH:
+        return False
+    if candidate.lower() in _INSECURE_SECRET_KEY_VALUES:
+        return False
+    return True
+
+
+def validate_startup_security_settings() -> None:
+    """Fail fast on insecure settings outside development mode."""
+    if settings.is_development:
+        return
+
+    if settings.APP_DEBUG:
+        raise ValueError("APP_DEBUG must be false outside development mode")
+
+    if not settings.API_KEY or not settings.API_KEY.strip():
+        raise ValueError("API_KEY must be set outside development mode")
+
+    if not _is_secret_key_secure(settings.SECRET_KEY):
+        raise ValueError(
+            f"SECRET_KEY must be at least {_MIN_SECRET_KEY_LENGTH} chars and non-default outside development mode"
+        )
