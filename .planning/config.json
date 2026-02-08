@@ -1,0 +1,6 @@
+{
+  "mode": "yolo",
+  "depth": "standard",
+  "parallelization": false,
+  "execution": "sequential"
+}
