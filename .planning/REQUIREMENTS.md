@@ -13,10 +13,10 @@
 
 ### MCP Server Management
 
-- [ ] **MCP-01**: User can create an MCP server configuration with command, args, environment variables, and enabled state.
-- [ ] **MCP-02**: User can update or remove an existing MCP server configuration.
-- [ ] **MCP-03**: User can restart an MCP server and run a tool re-discovery sync from UI/API.
-- [ ] **MCP-04**: User can view MCP server runtime status (`stopped`, `starting`, `running`, `error`) and last error message when applicable.
+- [x] **MCP-01**: User can create an MCP server configuration with command, args, environment variables, and enabled state.
+- [x] **MCP-02**: User can update or remove an existing MCP server configuration.
+- [x] **MCP-03**: User can restart an MCP server and run a tool re-discovery sync from UI/API.
+- [x] **MCP-04**: User can view MCP server runtime status (`stopped`, `starting`, `running`, `error`) and last error message when applicable.
 - [ ] **MCP-05**: User can browse discovered tools per MCP server, including tool names, descriptions, and input schema.
 
 ### MCP Runtime Integration
@@ -71,10 +71,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CTRL-01 | Phase 3 | Pending |
 | CTRL-02 | Phase 3 | Pending |
 | CTRL-03 | Phase 3 | Pending |
-| MCP-01 | Phase 2 | Pending |
-| MCP-02 | Phase 2 | Pending |
-| MCP-03 | Phase 2 | Pending |
-| MCP-04 | Phase 2 | Pending |
+| MCP-01 | Phase 2 | Complete |
+| MCP-02 | Phase 2 | Complete |
+| MCP-03 | Phase 2 | Complete |
+| MCP-04 | Phase 2 | Complete |
 | MCP-05 | Phase 3 | Pending |
 | MRT-01 | Phase 4 | Pending |
 | MRT-02 | Phase 4 | Pending |

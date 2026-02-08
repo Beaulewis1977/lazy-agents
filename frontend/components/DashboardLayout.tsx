@@ -8,11 +8,12 @@ interface NavItemProps {
   href: string;
   icon: string;
   label: string;
+  exact?: boolean;
 }
 
-function NavItem({ href, icon, label }: NavItemProps) {
+function NavItem({ href, icon, label, exact = false }: NavItemProps) {
   const pathname = usePathname();
-  const isActive = pathname === href || pathname.startsWith(href + "/");
+  const isActive = exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
 
   return (
     <Link href={href} className={`nav-item ${isActive ? "active" : ""}`}>
@@ -53,7 +54,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="nav-section">
             <div className="nav-section-title">Configuration</div>
             <NavItem href="/skills" icon="🔧" label="Skills" />
-            <NavItem href="/integrations" icon="🔗" label="Integrations" />
+            <NavItem href="/integrations" icon="🔗" label="Integrations" exact />
+            <NavItem href="/integrations/mcp" icon="🧩" label="MCP Servers" />
           </div>
 
           <div className="nav-section">

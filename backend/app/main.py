@@ -9,10 +9,11 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import agents, executions, health, integrations, skills, websocket
+from app.api import agents, executions, health, integrations, mcp, skills, websocket
 from app.core.config import settings, validate_startup_security_settings
 from app.core.database import init_db
 from app.core.security import redact_sensitive_string, validate_security_configuration
+from app.mcp import MCPServerManager
 
 # Configure structured logging
 structlog.configure(
@@ -40,6 +41,10 @@ async def lifespan(app: FastAPI):
     validate_startup_security_settings()
     await init_db()
     logger.info("Database initialized")
+
+    app.state.mcp_manager = MCPServerManager()
+    await app.state.mcp_manager.start_enabled_servers()
+    logger.info("MCP lifecycle manager initialized")
 
     # Start scheduler
     from app.core.database import async_session
@@ -88,6 +93,8 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
+    await app.state.mcp_manager.shutdown_all()
+    logger.info("MCP lifecycle manager shut down")
     agent_scheduler.stop()
     logger.info("Shutting down LazyAgents API")
 
@@ -117,6 +124,7 @@ app.include_router(agents.router, prefix="/api/agents", tags=["Agents"])
 app.include_router(skills.router, prefix="/api/skills", tags=["Skills"])
 app.include_router(integrations.router, prefix="/api/integrations", tags=["Integrations"])
 app.include_router(executions.router, prefix="/api/executions", tags=["Executions"])
+app.include_router(mcp.router, tags=["MCP"])
 app.include_router(websocket.router, prefix="/ws", tags=["WebSocket"])
 
 

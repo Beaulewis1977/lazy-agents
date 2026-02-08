@@ -38,7 +38,7 @@ async def init_db():
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
 
     # Import models to register them with Base
-    from app.models import agent, execution, integration, skill  # noqa: F401
+    from app.models import agent, execution, integration, mcp_server, skill  # noqa: F401
 
     # Create all tables
     async with engine.begin() as conn:

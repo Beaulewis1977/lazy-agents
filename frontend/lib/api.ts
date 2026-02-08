@@ -34,6 +34,11 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
     throw new Error(error.detail || `API error: ${response.status}`);
   }
 
+  // No-content responses are only expected for void endpoints (for example DELETE).
+  if (response.status === 204 || response.status === 205) {
+    return undefined as T;
+  }
+
   return response.json();
 }
 
@@ -100,6 +105,42 @@ export interface ExecutionStats {
   success_rate: number;
   total_tokens: number;
   total_cost_cents: number;
+}
+
+export type MCPServerStatus = 'stopped' | 'starting' | 'running' | 'error';
+
+export interface MCPServer {
+  id: string;
+  name: string;
+  description: string | null;
+  command: string;
+  args: string[];
+  env: Record<string, string>;
+  enabled: boolean;
+  status: MCPServerStatus;
+  tools_detected: Array<Record<string, unknown>>;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MCPServerCreateInput {
+  name: string;
+  description?: string | null;
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+  enabled?: boolean;
+}
+
+export interface MCPServerUpdateInput {
+  name?: string;
+  description?: string | null;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  merge_env?: boolean;
+  enabled?: boolean;
 }
 
 export interface DashboardStats {
@@ -232,6 +273,41 @@ export const integrationsAPI = {
     fetchAPI<{ success: boolean; message: string }>(`/api/integrations/${id}/test`, { method: 'POST' }),
 };
 
+export const mcpServersAPI = {
+  list: () =>
+    fetchAPI<MCPServer[]>('/api/mcp/servers'),
+
+  get: (id: string) =>
+    fetchAPI<MCPServer>(`/api/mcp/servers/${id}`),
+
+  create: (data: MCPServerCreateInput) =>
+    fetchAPI<MCPServer>('/api/mcp/servers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: MCPServerUpdateInput) =>
+    fetchAPI<MCPServer>(`/api/mcp/servers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  remove: (id: string) =>
+    fetchAPI<void>(`/api/mcp/servers/${id}`, {
+      method: 'DELETE',
+    }),
+
+  restart: (id: string) =>
+    fetchAPI<MCPServer>(`/api/mcp/servers/${id}/restart`, {
+      method: 'POST',
+    }),
+
+  sync: (id: string) =>
+    fetchAPI<MCPServer>(`/api/mcp/servers/${id}/sync`, {
+      method: 'POST',
+    }),
+};
+
 // Executions API
 export const executionsAPI = {
   list: (agentId?: string, status?: string, limit = 50) =>
@@ -261,6 +337,7 @@ export const api = {
   agents: agentsAPI,
   skills: skillsAPI,
   integrations: integrationsAPI,
+  mcpServers: mcpServersAPI,
   executions: executionsAPI,
   health: healthAPI,
 };

@@ -5,32 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** Users can securely run and connect agents across all their tools from one place, with production-ready behavior on a self-hosted single-VM deployment.
-**Current focus:** Phase 2 - MCP Server Control Plane
+**Current focus:** Phase 3 - Agent UX and MCP Tool Visibility
 
 ## Current Position
 
-Phase: 2 of 5 (MCP Server Control Plane)
+Phase: 3 of 5 (Agent UX and MCP Tool Visibility)
 Plan: 0 of 3 in current phase
 Status: Ready to plan
-Last activity: 2026-02-08 — Phase 1 verified complete (01-VERIFICATION.md)
+Last activity: 2026-02-08 — Phase 2 verified complete (02-VERIFICATION.md)
 
-Progress: [██░░░░░░░░] 20%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 27 min
-- Total execution time: 1.37 hours
+- Total plans completed: 6
+- Average duration: 17 min
+- Total execution time: 1.65 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 | 3 | 82 min | 27 min |
+| 2 | 3 | 17 min | 6 min |
+| 3 | 0 | - | - |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (1 min), 01-02 (7 min), 01-03 (74 min)
+- Last 5 plans: 01-02 (7 min), 01-03 (74 min), 02-01 (5 min), 02-02 (3 min), 02-03 (9 min)
 - Trend: Improving reliability
 
 *Updated after each plan completion*
@@ -52,6 +54,12 @@ Recent decisions affecting current work:
 - Phase 01-03: Operator setup docs now include production env guardrails and `/health` + `/health/ready` verification steps.
 - Phase 01-03: Production overlay uses compose override semantics to remove dev bind mounts and preserve only required data mounts.
 - Phase 01-03: Worker service is profile-gated (`worker`) until a concrete backend worker entrypoint exists.
+- Phase 02-01: Store MCP env values encrypted at rest and only expose masked env metadata via API responses.
+- Phase 02-01: Enforce strict Pydantic validation for MCP args/env payload shape to keep 4xx errors actionable.
+- Phase 02-02: Manage MCP runtimes via a FastAPI lifespan singleton (`app.state.mcp_manager`) for deterministic startup/shutdown ownership.
+- Phase 02-02: Persist deterministic `last_error` lifecycle text and surface it through list/get/restart/sync API contracts.
+- Phase 02-03: Use typed `mcpServersAPI` client methods and refresh after lifecycle actions to keep UI status authoritative.
+- Phase 02-03: Keep env update payload optional in edit flows to preserve stored encrypted env values.
 
 ### Pending Todos
 
@@ -64,6 +72,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-08 06:32
-Stopped at: Phase 1 verified and complete; ready for Phase 2 planning
+Last session: 2026-02-08 12:41
+Stopped at: Completed Phase 2 (02-mcp-server-control-plane)
 Resume file: None
