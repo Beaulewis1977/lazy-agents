@@ -67,6 +67,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: python -m app.worker
+    profiles:
+      - worker
     env_file:
       - .env
     depends_on:
