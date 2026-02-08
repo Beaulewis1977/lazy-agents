@@ -34,11 +34,11 @@ SENSITIVE_KEY_TERMS = (
     "client_secret",
 )
 
-SENSITIVE_STRING_PATTERNS = [
-    re.compile(r"(?i)\b(authorization)\s*[:=]\s*([^\s,;]+)"),
-    re.compile(r"(?i)\b(api[_-]?key|token|secret|password)\s*[:=]\s*([^\s,;]+)"),
-    re.compile(r"(?i)(bearer\s+)([A-Za-z0-9._\-]+)"),
-]
+AUTH_HEADER_PATTERN = re.compile(r"(?i)\bauthorization\s*[:=]\s*(?:bearer\s+)?([^\s,;]+)")
+KEY_VALUE_SECRET_PATTERN = re.compile(
+    r"(?i)\b(api[_-]?key|token|secret|password)\s*[:=]\s*([^\s,;]+)"
+)
+BEARER_TOKEN_PATTERN = re.compile(r"(?i)\bbearer\s+([A-Za-z0-9._\-]+)")
 
 
 def mask_secret_value(value: Any) -> str:
@@ -59,9 +59,9 @@ def _is_sensitive_key(key: Any) -> bool:
 
 def redact_sensitive_string(value: str) -> str:
     """Redact token-like segments in free-form strings."""
-    redacted = value
-    for pattern in SENSITIVE_STRING_PATTERNS:
-        redacted = pattern.sub(r"\1=" + REDACTED_VALUE, redacted)
+    redacted = AUTH_HEADER_PATTERN.sub(f"authorization={REDACTED_VALUE}", value)
+    redacted = KEY_VALUE_SECRET_PATTERN.sub(r"\1=" + REDACTED_VALUE, redacted)
+    redacted = BEARER_TOKEN_PATTERN.sub("bearer " + REDACTED_VALUE, redacted)
     return redacted
 
 
