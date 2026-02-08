@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** Users can securely run and connect agents across all their tools from one place, with production-ready behavior on a self-hosted single-VM deployment.
-**Current focus:** Phase 3 - Agent UX and MCP Tool Visibility
+**Current focus:** Phase 3.1 - Custom Integration Types and MCP JSON Import (INSERTED)
 
 ## Current Position
 
-Phase: 3 of 5 (Agent UX and MCP Tool Visibility)
-Plan: 3 of 3 in current phase
-Status: Complete
-Last activity: 2026-02-08 — Completed 03-03-PLAN.md (validation and human-verify)
+Phase: 3.1 of 6 (Custom Integration Types and MCP JSON Import - INSERTED)
+Plan: Not yet planned
+Status: Not started
+Last activity: 2026-02-08 — Phase 3.1 inserted after Phase 3 completion
 
-Progress: [██████░░░░] 60%
+Progress: [██████░░░░] 60% (phase 3.1 is urgent insertion work)
 
 ## Performance Metrics
 
@@ -69,6 +69,12 @@ Recent decisions affecting current work:
 - Phase 03-02: Defensive optional chaining for tools_detected array since MCP servers return loosely-typed metadata.
 - Phase 03-03: Add verify_api_key dependency override to MCP test fixtures for auth-gated routes.
 
+### Roadmap Evolution
+
+- Phase 3.1 inserted after Phase 3: Custom Integration Types and MCP JSON Import (URGENT)
+  - Reason: Enhance integration/MCP operator UX before proceeding to runtime invocation work
+  - Scope: Custom integration type catalog + MCP JSON config import flows
+
 ### Pending Todos
 
 None yet.
@@ -81,5 +87,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-08 20:17
-Stopped at: Completed Phase 03 (all 3 plans)
-Resume file: None — Phase 3 complete, ready for Phase 4
+Stopped at: Phase 3.1 inserted (urgent work) — not yet planned
+Resume file: None — Phase 3.1 ready for planning
