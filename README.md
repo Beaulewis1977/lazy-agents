@@ -25,7 +25,7 @@
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Docker & Docker Compose
+- Docker with Compose v2 (`docker compose`)
 - An API key for at least one LLM provider
 
 ### Installation
@@ -38,15 +38,23 @@ cd lazy-agents
 # Copy environment template
 cp .env.example .env
 
-# Add your API keys to .env
+# Add secure values to .env
 nano .env
 
-# Start everything
-docker compose up -d
+# Start production profile
+docker compose -f docker-compose.yml -f compose.production.yaml up -d
+
+# Verify health/readiness
+curl -sS http://localhost:8000/health
+curl -sS http://localhost:8000/health/ready
 
 # Open the dashboard
 open http://localhost:3000
 ```
+
+Production note:
+- Keep `APP_ENV=production`, `APP_DEBUG=false`, strong `SECRET_KEY`, and non-empty `API_KEY`.
+- Backend startup fails fast when these values are insecure or missing.
 
 ---
 
