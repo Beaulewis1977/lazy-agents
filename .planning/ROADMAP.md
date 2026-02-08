@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Security and Deployment Baseline** - Enforce secure defaults and establish reliable single-VM Compose deployment.
 - [x] **Phase 2: MCP Server Control Plane** - Add MCP server persistence, lifecycle operations, and status management.
-- [ ] **Phase 3: Agent UX and MCP Tool Visibility** - Complete operator-facing agent workflows and MCP tool browsing.
+- [x] **Phase 3: Agent UX and MCP Tool Visibility** - Complete operator-facing agent workflows and MCP tool browsing.
 - [ ] **Phase 4: MCP Runtime Invocation Integration** - Route namespaced MCP tools through agent execution and persist robust results.
 - [ ] **Phase 5: Production Hardening and First-Run Validation** - Prove installability, persistence, and production-readiness across restart and regression flows.
 
@@ -63,7 +63,7 @@ Plans:
 Plans:
 - [x] 03-01-PLAN.md — Enhance agent list, create/edit forms, and execution result display (CTRL-01, CTRL-02, CTRL-03)
 - [x] 03-02-PLAN.md — Build MCP tool browser with schema rendering (MCP-05)
-- [ ] 03-03-PLAN.md — Validate frontend/backend contracts and human-verify UX quality
+- [x] 03-03-PLAN.md — Validate frontend/backend contracts and human-verify UX quality
 
 ### Phase 4: MCP Runtime Invocation Integration
 **Goal**: Agents can invoke MCP tools reliably using canonical namespaced identifiers, with complete execution traceability.
@@ -104,6 +104,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Security and Deployment Baseline | 3/3 | Complete | 2026-02-08 |
 | 2. MCP Server Control Plane | 3/3 | Complete | 2026-02-08 |
-| 3. Agent UX and MCP Tool Visibility | 2/3 | In progress | - |
+| 3. Agent UX and MCP Tool Visibility | 3/3 | Complete | 2026-02-08 |
 | 4. MCP Runtime Invocation Integration | 0/3 | Not started | - |
 | 5. Production Hardening and First-Run Validation | 0/3 | Not started | - |
