@@ -10,27 +10,27 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 ## Current Position
 
 Phase: 2 of 5 (MCP Server Control Plane)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-08 — Completed 02-02-PLAN.md
+Plan: 3 of 3 in current phase
+Status: Awaiting phase verification
+Last activity: 2026-02-08 — Completed 02-03-PLAN.md
 
-Progress: [███░░░░░░░] 33%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 4 min
-- Total execution time: 0.1 hours
+- Total plans completed: 3
+- Average duration: 6 min
+- Total execution time: 0.3 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 2 (MCP Server Control Plane) | 2 | 8 min | 4 min |
+| 2 (MCP Server Control Plane) | 3 | 17 min | 6 min |
 
 **Recent Trend:**
-- Last 5 plans: 5 min, 3 min
+- Last 5 plans: 5 min, 3 min, 9 min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -48,6 +48,8 @@ Recent decisions affecting current work:
 - 2026-02-08 (02-01): Enforce strict Pydantic validation for MCP args/env payload shape to keep 4xx errors actionable
 - 2026-02-08 (02-02): Manage MCP runtimes via a FastAPI lifespan singleton (`app.state.mcp_manager`) for deterministic startup/shutdown ownership
 - 2026-02-08 (02-02): Persist deterministic `last_error` lifecycle text and surface it through list/get/restart/sync API contracts
+- 2026-02-08 (02-03): Use typed `mcpServersAPI` client methods and refresh after lifecycle actions to keep UI status authoritative
+- 2026-02-08 (02-03): Keep env update payload optional in edit flows to preserve stored encrypted env values
 
 ### Pending Todos
 
@@ -57,10 +59,9 @@ None yet.
 
 - MCP auth/profile variation across third-party servers may require phase-specific validation.
 - Existing contract drift risks between frontend/backend require early test coverage.
-- Frontend phase must ensure UI forms for args/env map cleanly to backend validation/error format.
 
 ## Session Continuity
 
-Last session: 2026-02-08 12:24
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-02-08 12:39
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None
