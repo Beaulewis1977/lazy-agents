@@ -45,6 +45,12 @@ def verify_api_key(api_key: str | None = Security(api_key_header)) -> bool:
 
 def validate_security_configuration() -> None:
     """Validate security settings at startup."""
+    if not settings.is_development:
+        if settings.SECRET_KEY.startswith("change-me-"):
+            raise RuntimeError("SECRET_KEY must be changed in non-development mode")
+        if settings.SECRET_KEY_SALT.startswith(b"change-me-"):
+            raise RuntimeError("SECRET_KEY_SALT must be changed in non-development mode")
+
     if not settings.API_KEY and not (settings.is_development or settings.ALLOW_NO_API_KEY):
         raise RuntimeError("API_KEY must be set in non-development mode")
 

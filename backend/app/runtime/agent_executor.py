@@ -325,7 +325,7 @@ class AgentExecutor:
                 await self._emit_log(
                     context.execution_id, "error", f"Error in loop: {e!s}", "agent"
                 )
-                raise e
+                raise
 
         # Store execution metadata
         context.memory.append(

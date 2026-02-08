@@ -229,6 +229,8 @@ class SkillLoader:
 
         try:
             frontmatter = yaml.safe_load(match.group(1))
+            if not isinstance(frontmatter, dict):
+                return None, content
             body = match.group(2)
             return frontmatter, body
         except yaml.YAMLError:

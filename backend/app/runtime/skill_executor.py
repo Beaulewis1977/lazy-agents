@@ -5,7 +5,7 @@ Implements actual integrations for GitHub, Discord, Slack, HTTP, File, etc.
 
 import os
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
 import httpx
@@ -18,11 +18,7 @@ class SkillResult:
     success: bool
     data: Any
     error: str | None = None
-    metadata: dict[str, Any] = None
-
-    def __post_init__(self):
-        if self.metadata is None:
-            self.metadata = {}
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class BaseSkillExecutor(ABC):
