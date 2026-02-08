@@ -25,7 +25,8 @@ nano .env
 # Required: SECRET_KEY (strong random), API_KEY, and at least one LLM provider key
 
 # Validate merged compose config (optional, recommended)
-docker compose -f docker-compose.yml -f compose.production.yaml config > /tmp/lazy-agents.compose.merged.yaml
+# Note: omit --no-interpolate to see resolved values, but the output may contain secrets.
+docker compose -f docker-compose.yml -f compose.production.yaml config --no-interpolate > /dev/null
 
 # Start production profile
 docker compose -f docker-compose.yml -f compose.production.yaml up -d

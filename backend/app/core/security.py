@@ -91,7 +91,7 @@ def redact_sensitive_data(value: Any) -> Any:
 
 def verify_api_key(api_key: str | None = Security(api_key_header)) -> bool:
     """Verify API key from header."""
-    if settings.API_KEY is None:
+    if not settings.API_KEY or not settings.API_KEY.strip():
         if settings.is_development:
             # Development mode can run without API auth.
             return True

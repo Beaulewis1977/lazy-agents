@@ -109,6 +109,7 @@ settings = Settings()
 _INSECURE_SECRET_KEY_VALUES = {
     "",
     "change-me-in-production-please",
+    "change_me",
     "changeme",
     "secret",
     "default",

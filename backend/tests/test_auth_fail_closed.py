@@ -44,6 +44,16 @@ def test_verify_api_key_rejects_missing_key_in_production(restore_auth_settings)
     assert getattr(exc.value, "status_code", None) == 401
 
 
+def test_verify_api_key_rejects_blank_key_in_production(restore_auth_settings):
+    settings.APP_ENV = "production"
+    settings.API_KEY = "  "
+
+    with pytest.raises(Exception) as exc:
+        verify_api_key(None)
+
+    assert getattr(exc.value, "status_code", None) == 401
+
+
 def test_verify_api_key_rejects_invalid_key_in_production(restore_auth_settings):
     settings.APP_ENV = "production"
     settings.API_KEY = "expected-key"
