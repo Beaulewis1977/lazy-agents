@@ -93,6 +93,7 @@ export default function MCPIntegrationsPage() {
   );
 
   useEffect(() => {
+    // Initial server fetch runs once when this page mounts.
     void loadServers();
   }, []);
 
