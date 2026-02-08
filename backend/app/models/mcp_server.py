@@ -4,7 +4,7 @@ MCP server configuration database model.
 
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import JSON, Boolean, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -25,7 +25,7 @@ class MCPServer(Base):
 
     # Human-readable server identity and command setup
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     command: Mapped[str] = mapped_column(String(500), nullable=False)
     args: Mapped[list[str]] = mapped_column(JSON, default=list)
     env: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
@@ -34,7 +34,7 @@ class MCPServer(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     status: Mapped[str] = mapped_column(String(50), default="stopped")
     tools_detected: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
-    last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Metadata
     created_at: Mapped[datetime] = mapped_column(

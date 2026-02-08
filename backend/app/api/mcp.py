@@ -3,7 +3,6 @@ MCP server management API endpoints.
 """
 
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
@@ -25,7 +24,7 @@ def _encrypt_env(env: dict[str, str]) -> dict[str, str]:
 
 def _mask_env(env: dict[str, str]) -> dict[str, str]:
     """Expose only masked environment values in API responses."""
-    return {key: "********" for key in env}
+    return dict.fromkeys(env, "********")
 
 
 def _to_response(server: MCPServer) -> "MCPServerResponse":
@@ -59,7 +58,7 @@ class MCPServerBase(BaseModel):
     """Shared request payload fields for MCP server writes."""
 
     name: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
+    description: str | None = None
     command: str = Field(..., min_length=1, max_length=500)
     args: list[str] = Field(default_factory=list)
     env: dict[str, str] = Field(default_factory=dict)
@@ -75,7 +74,7 @@ class MCPServerBase(BaseModel):
 
     @field_validator("description")
     @classmethod
-    def normalize_description(cls, value: Optional[str]) -> Optional[str]:
+    def normalize_description(cls, value: str | None) -> str | None:
         if value is None:
             return None
         trimmed = value.strip()
@@ -112,16 +111,16 @@ class MCPServerCreate(MCPServerBase):
 class MCPServerUpdate(BaseModel):
     """Schema for partial MCP server updates."""
 
-    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
-    description: Optional[str] = None
-    command: Optional[str] = Field(default=None, min_length=1, max_length=500)
-    args: Optional[list[str]] = None
-    env: Optional[dict[str, str]] = None
-    enabled: Optional[bool] = None
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    command: str | None = Field(default=None, min_length=1, max_length=500)
+    args: list[str] | None = None
+    env: dict[str, str] | None = None
+    enabled: bool | None = None
 
     @field_validator("name", "command")
     @classmethod
-    def validate_non_blank_optional(cls, value: Optional[str]) -> Optional[str]:
+    def validate_non_blank_optional(cls, value: str | None) -> str | None:
         if value is None:
             return None
         trimmed = value.strip()
@@ -131,7 +130,7 @@ class MCPServerUpdate(BaseModel):
 
     @field_validator("description")
     @classmethod
-    def normalize_description_optional(cls, value: Optional[str]) -> Optional[str]:
+    def normalize_description_optional(cls, value: str | None) -> str | None:
         if value is None:
             return None
         trimmed = value.strip()
@@ -139,7 +138,7 @@ class MCPServerUpdate(BaseModel):
 
     @field_validator("args")
     @classmethod
-    def validate_args_optional(cls, value: Optional[list[str]]) -> Optional[list[str]]:
+    def validate_args_optional(cls, value: list[str] | None) -> list[str] | None:
         if value is None:
             return None
         for index, item in enumerate(value):
@@ -151,7 +150,7 @@ class MCPServerUpdate(BaseModel):
 
     @field_validator("env")
     @classmethod
-    def validate_env_optional(cls, value: Optional[dict[str, str]]) -> Optional[dict[str, str]]:
+    def validate_env_optional(cls, value: dict[str, str] | None) -> dict[str, str] | None:
         if value is None:
             return None
         normalized: dict[str, str] = {}
@@ -170,14 +169,14 @@ class MCPServerResponse(BaseModel):
 
     id: str
     name: str
-    description: Optional[str]
+    description: str | None
     command: str
     args: list[str]
     env: dict[str, str]
     enabled: bool
     status: str
     tools_detected: list[dict[str, object]]
-    last_error: Optional[str]
+    last_error: str | None
     created_at: datetime
     updated_at: datetime
 

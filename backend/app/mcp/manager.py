@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import structlog
 from sqlalchemy import select
@@ -39,7 +39,7 @@ class MCPServerManager:
 
     def __init__(
         self,
-        session_factory: Optional[Callable[[], AsyncSession]] = None,
+        session_factory: Callable[[], AsyncSession] | None = None,
         mcp_client_module: Any = client,
     ) -> None:
         self._session_factory = session_factory or async_session
@@ -192,8 +192,8 @@ class MCPServerManager:
         server_id: str,
         *,
         status: str,
-        last_error: Optional[str],
-        tools_detected: Optional[list[dict[str, Any]]] = None,
+        last_error: str | None,
+        tools_detected: list[dict[str, Any]] | None = None,
     ) -> MCPServer:
         """Persist status boundary changes used by lifecycle operations."""
 
