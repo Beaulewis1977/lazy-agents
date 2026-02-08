@@ -20,19 +20,19 @@ def verify_api_key(api_key: Optional[str] = Security(api_key_header)) -> bool:
     if settings.API_KEY is None:
         # No API key configured, allow all requests (development mode)
         return True
-    
+
     if api_key is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="API key required",
         )
-    
+
     if not secrets.compare_digest(api_key, settings.API_KEY):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid API key",
         )
-    
+
     return True
 
 

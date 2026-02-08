@@ -26,7 +26,7 @@ async def readiness_check():
     checks = {
         "llm_providers": settings.available_providers,
     }
-    
+
     # Check Database
     try:
         from app.core.database import async_session
@@ -36,9 +36,9 @@ async def readiness_check():
         checks["database"] = "ok"
     except Exception as e:
         checks["database"] = f"error: {str(e)}"
-        
+
     status_code = "ready" if checks["database"] == "ok" else "not_ready"
-    
+
     return {
         "status": status_code,
         "timestamp": datetime.utcnow().isoformat(),

@@ -41,12 +41,12 @@ async def lifespan(app: FastAPI):
     app.state.mcp_manager = MCPServerManager()
     await app.state.mcp_manager.start_enabled_servers()
     logger.info("MCP lifecycle manager initialized")
-    
+
     # Start scheduler
     from app.runtime.scheduler import agent_scheduler
     from app.core.database import async_session
     from app.runtime.agent_executor import AgentExecutor
-    
+
     async def execute_scheduled_agent(agent_id: str, trigger: str):
         """Callback for scheduled agent execution."""
         async with async_session() as db:
@@ -55,15 +55,15 @@ async def lifespan(app: FastAPI):
                 await executor.execute(agent_id, trigger=trigger)
             except Exception as e:
                 logger.error("Scheduled execution failed", agent_id=agent_id, error=str(e))
-    
+
     agent_scheduler.set_execute_callback(execute_scheduled_agent)
     agent_scheduler.start()
     logger.info("Agent scheduler started")
-    
+
     # Load existing schedules
     from sqlalchemy import select
     from app.models.agent import Agent
-    
+
     async with async_session() as db:
         result = await db.execute(
             select(Agent).where(
@@ -77,12 +77,12 @@ async def lifespan(app: FastAPI):
             if agent_scheduler.schedule_agent(agent.id, agent.schedule):
                 scheduled_count += 1
         logger.info(f"Loaded {scheduled_count} scheduled agents")
-    
+
     # Emit startup log via WebSocket
     await websocket.emit_system_log("info", f"LazyAgents into loaded with {scheduled_count} schedules")
-    
+
     yield
-    
+
     # Shutdown
     await app.state.mcp_manager.shutdown_all()
     logger.info("MCP lifecycle manager shut down")

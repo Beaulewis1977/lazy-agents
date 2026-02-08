@@ -86,7 +86,7 @@ export default function SkillDetailPage() {
 
   async function handleDelete() {
     if (!confirm("Are you sure you want to delete this skill?")) return;
-    
+
     try {
       await api.skills.delete(skillId);
       router.push("/skills");
@@ -344,7 +344,7 @@ export default function SkillDetailPage() {
                   <code>{skill.source_path}</code>
                 </div>
               )}
-              
+
               {Object.keys(skill.templates).length > 0 && (
                 <div className="templates-section">
                   <h3>Templates</h3>
@@ -360,7 +360,7 @@ export default function SkillDetailPage() {
                   </div>
                 </div>
               )}
-              
+
               {skill.references.length > 0 && (
                 <div className="references-section">
                   <h3>References ({skill.references.length})</h3>

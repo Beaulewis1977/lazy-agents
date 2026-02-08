@@ -85,7 +85,7 @@ async def list_agents(
     query = select(Agent).offset(skip).limit(limit)
     if status:
         query = query.where(Agent.status == status)
-    
+
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -111,13 +111,13 @@ async def get_agent(
     """Get an agent by ID."""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent {agent_id} not found",
         )
-    
+
     return agent
 
 
@@ -130,18 +130,18 @@ async def update_agent(
     """Update an agent."""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent {agent_id} not found",
         )
-    
+
     # Update fields
     update_data = agent_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(agent, field, value)
-    
+
     await db.commit()
     await db.refresh(agent)
     return agent
@@ -155,13 +155,13 @@ async def delete_agent(
     """Delete an agent."""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent {agent_id} not found",
         )
-    
+
     await db.delete(agent)
     await db.commit()
 
@@ -175,24 +175,24 @@ async def run_agent(
     """Trigger an agent execution."""
     from app.runtime.agent_executor import AgentExecutor
     from app.api.websocket import emit_execution_log
-    
+
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent {agent_id} not found",
         )
-    
+
     # Get API keys from request if provided
     api_keys = {}
     if "api_keys" in input_data:
         api_keys = input_data.pop("api_keys")
-    
+
     # Execute the agent
     executor = AgentExecutor(db)
-    
+
     # Add WebSocket log callback
     async def log_callback(log_entry):
         await emit_execution_log(
@@ -202,7 +202,7 @@ async def run_agent(
             log_entry["source"],
         )
     executor.add_log_callback(log_callback)
-    
+
     try:
         execution = await executor.execute(
             agent_id=agent_id,
@@ -210,7 +210,7 @@ async def run_agent(
             trigger="manual",
             api_keys=api_keys,
         )
-        
+
         return {
             "message": f"Agent {agent.name} executed",
             "agent_id": agent_id,
@@ -234,16 +234,16 @@ async def get_agent_config(
     from app.models.skill import Skill
     from app.models.integration import Integration
     from app.runtime.scheduler import agent_scheduler
-    
+
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent {agent_id} not found",
         )
-    
+
     # Load skill details
     skill_details = []
     if agent.skills:
@@ -258,7 +258,7 @@ async def get_agent_config(
             }
             for s in skills_result.scalars().all()
         ]
-    
+
     # Load integration details
     integration_details = []
     if agent.integrations:
@@ -274,10 +274,10 @@ async def get_agent_config(
             }
             for i in integrations_result.scalars().all()
         ]
-    
+
     # Get schedule info
     next_run = agent_scheduler.get_next_run(agent_id)
-    
+
     return {
         "id": agent.id,
         "name": agent.name,
@@ -301,4 +301,3 @@ async def get_agent_config(
             "last_run_at": agent.last_run_at.isoformat() if agent.last_run_at else None,
         },
     }
-

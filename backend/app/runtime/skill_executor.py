@@ -26,7 +26,7 @@ class SkillResult:
 
 class BaseSkillExecutor(ABC):
     """Base class for skill executors."""
-    
+
     @abstractmethod
     async def execute(self, skill_id: str, params: Dict[str, Any], credentials: Dict[str, str]) -> SkillResult:
         """Execute a skill with given parameters."""
@@ -35,20 +35,20 @@ class BaseSkillExecutor(ABC):
 
 class GitHubSkillExecutor(BaseSkillExecutor):
     """Execute GitHub-related skills."""
-    
+
     BASE_URL = "https://api.github.com"
-    
+
     async def execute(self, skill_id: str, params: Dict[str, Any], credentials: Dict[str, str]) -> SkillResult:
         token = credentials.get("token")
         if not token:
             return SkillResult(success=False, data=None, error="GitHub token not configured")
-        
+
         headers = {
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
         }
-        
+
         async with httpx.AsyncClient() as client:
             try:
                 if skill_id == "github.list_issues":
@@ -69,12 +69,12 @@ class GitHubSkillExecutor(BaseSkillExecutor):
                 return SkillResult(success=False, data=None, error=f"GitHub API error: {e.response.status_code} - {e.response.text}")
             except Exception as e:
                 return SkillResult(success=False, data=None, error=str(e))
-    
+
     async def _list_issues(self, client: httpx.AsyncClient, headers: Dict, params: Dict) -> SkillResult:
         repo = params.get("repo", "")
         state = params.get("state", "open")
         limit = params.get("limit", 10)
-        
+
         response = await client.get(
             f"{self.BASE_URL}/repos/{repo}/issues",
             headers=headers,
@@ -82,7 +82,7 @@ class GitHubSkillExecutor(BaseSkillExecutor):
         )
         response.raise_for_status()
         issues = response.json()
-        
+
         return SkillResult(
             success=True,
             data=[{
@@ -96,13 +96,13 @@ class GitHubSkillExecutor(BaseSkillExecutor):
             } for i in issues],
             metadata={"total": len(issues)},
         )
-    
+
     async def _create_issue(self, client: httpx.AsyncClient, headers: Dict, params: Dict) -> SkillResult:
         repo = params.get("repo", "")
         title = params.get("title", "")
         body = params.get("body", "")
         labels = params.get("labels", [])
-        
+
         response = await client.post(
             f"{self.BASE_URL}/repos/{repo}/issues",
             headers=headers,
@@ -110,7 +110,7 @@ class GitHubSkillExecutor(BaseSkillExecutor):
         )
         response.raise_for_status()
         issue = response.json()
-        
+
         return SkillResult(
             success=True,
             data={
@@ -119,14 +119,14 @@ class GitHubSkillExecutor(BaseSkillExecutor):
                 "url": issue["html_url"],
             },
         )
-    
+
     async def _get_repo(self, client: httpx.AsyncClient, headers: Dict, params: Dict) -> SkillResult:
         repo = params.get("repo", "")
-        
+
         response = await client.get(f"{self.BASE_URL}/repos/{repo}", headers=headers)
         response.raise_for_status()
         data = response.json()
-        
+
         return SkillResult(
             success=True,
             data={
@@ -141,12 +141,12 @@ class GitHubSkillExecutor(BaseSkillExecutor):
                 "url": data["html_url"],
             },
         )
-    
+
     async def _list_prs(self, client: httpx.AsyncClient, headers: Dict, params: Dict) -> SkillResult:
         repo = params.get("repo", "")
         state = params.get("state", "open")
         limit = params.get("limit", 10)
-        
+
         response = await client.get(
             f"{self.BASE_URL}/repos/{repo}/pulls",
             headers=headers,
@@ -154,7 +154,7 @@ class GitHubSkillExecutor(BaseSkillExecutor):
         )
         response.raise_for_status()
         prs = response.json()
-        
+
         return SkillResult(
             success=True,
             data=[{
@@ -166,30 +166,30 @@ class GitHubSkillExecutor(BaseSkillExecutor):
                 "url": pr["html_url"],
             } for pr in prs],
         )
-    
+
     async def _get_file(self, client: httpx.AsyncClient, headers: Dict, params: Dict) -> SkillResult:
         repo = params.get("repo", "")
         path = params.get("path", "README.md")
-        
+
         response = await client.get(
             f"{self.BASE_URL}/repos/{repo}/contents/{path}",
             headers=headers,
         )
         response.raise_for_status()
         data = response.json()
-        
+
         import base64
         content = base64.b64decode(data["content"]).decode("utf-8")
-        
+
         return SkillResult(
             success=True,
             data={"path": path, "content": content, "size": data["size"]},
         )
-    
+
     async def _list_commits(self, client: httpx.AsyncClient, headers: Dict, params: Dict) -> SkillResult:
         repo = params.get("repo", "")
         limit = params.get("limit", 10)
-        
+
         response = await client.get(
             f"{self.BASE_URL}/repos/{repo}/commits",
             headers=headers,
@@ -197,7 +197,7 @@ class GitHubSkillExecutor(BaseSkillExecutor):
         )
         response.raise_for_status()
         commits = response.json()
-        
+
         return SkillResult(
             success=True,
             data=[{
@@ -211,19 +211,19 @@ class GitHubSkillExecutor(BaseSkillExecutor):
 
 class DiscordSkillExecutor(BaseSkillExecutor):
     """Execute Discord-related skills."""
-    
+
     BASE_URL = "https://discord.com/api/v10"
-    
+
     async def execute(self, skill_id: str, params: Dict[str, Any], credentials: Dict[str, str]) -> SkillResult:
         token = credentials.get("bot_token")
         if not token:
             return SkillResult(success=False, data=None, error="Discord bot token not configured")
-        
+
         headers = {
             "Authorization": f"Bot {token}",
             "Content-Type": "application/json",
         }
-        
+
         async with httpx.AsyncClient() as client:
             try:
                 if skill_id == "discord.send_message":
@@ -236,11 +236,11 @@ class DiscordSkillExecutor(BaseSkillExecutor):
                 return SkillResult(success=False, data=None, error=f"Discord API error: {e.response.status_code}")
             except Exception as e:
                 return SkillResult(success=False, data=None, error=str(e))
-    
+
     async def _send_message(self, client: httpx.AsyncClient, headers: Dict, params: Dict) -> SkillResult:
         channel_id = params.get("channel_id", "")
         content = params.get("content", "")
-        
+
         response = await client.post(
             f"{self.BASE_URL}/channels/{channel_id}/messages",
             headers=headers,
@@ -248,16 +248,16 @@ class DiscordSkillExecutor(BaseSkillExecutor):
         )
         response.raise_for_status()
         msg = response.json()
-        
+
         return SkillResult(
             success=True,
             data={"message_id": msg["id"], "channel_id": channel_id},
         )
-    
+
     async def _get_messages(self, client: httpx.AsyncClient, headers: Dict, params: Dict) -> SkillResult:
         channel_id = params.get("channel_id", "")
         limit = params.get("limit", 10)
-        
+
         response = await client.get(
             f"{self.BASE_URL}/channels/{channel_id}/messages",
             headers=headers,
@@ -265,7 +265,7 @@ class DiscordSkillExecutor(BaseSkillExecutor):
         )
         response.raise_for_status()
         messages = response.json()
-        
+
         return SkillResult(
             success=True,
             data=[{
@@ -279,19 +279,19 @@ class DiscordSkillExecutor(BaseSkillExecutor):
 
 class SlackSkillExecutor(BaseSkillExecutor):
     """Execute Slack-related skills."""
-    
+
     BASE_URL = "https://slack.com/api"
-    
+
     async def execute(self, skill_id: str, params: Dict[str, Any], credentials: Dict[str, str]) -> SkillResult:
         token = credentials.get("bot_token")
         if not token:
             return SkillResult(success=False, data=None, error="Slack bot token not configured")
-        
+
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
-        
+
         async with httpx.AsyncClient() as client:
             try:
                 if skill_id == "slack.send_message":
@@ -302,40 +302,40 @@ class SlackSkillExecutor(BaseSkillExecutor):
                     return SkillResult(success=False, data=None, error=f"Unknown Slack skill: {skill_id}")
             except Exception as e:
                 return SkillResult(success=False, data=None, error=str(e))
-    
+
     async def _send_message(self, client: httpx.AsyncClient, headers: Dict, params: Dict) -> SkillResult:
         channel = params.get("channel", "")
         text = params.get("text", "")
-        
+
         response = await client.post(
             f"{self.BASE_URL}/chat.postMessage",
             headers=headers,
             json={"channel": channel, "text": text},
         )
         data = response.json()
-        
+
         if not data.get("ok"):
             return SkillResult(success=False, data=None, error=data.get("error", "Unknown error"))
-        
+
         return SkillResult(
             success=True,
             data={"ts": data["ts"], "channel": data["channel"]},
         )
-    
+
     async def _get_messages(self, client: httpx.AsyncClient, headers: Dict, params: Dict) -> SkillResult:
         channel = params.get("channel", "")
         limit = params.get("limit", 10)
-        
+
         response = await client.get(
             f"{self.BASE_URL}/conversations.history",
             headers=headers,
             params={"channel": channel, "limit": limit},
         )
         data = response.json()
-        
+
         if not data.get("ok"):
             return SkillResult(success=False, data=None, error=data.get("error", "Unknown error"))
-        
+
         return SkillResult(
             success=True,
             data=[{
@@ -348,14 +348,14 @@ class SlackSkillExecutor(BaseSkillExecutor):
 
 class HTTPSkillExecutor(BaseSkillExecutor):
     """Execute generic HTTP requests."""
-    
+
     async def execute(self, skill_id: str, params: Dict[str, Any], credentials: Dict[str, str]) -> SkillResult:
         url = params.get("url", "")
         method = params.get("method", "GET").upper()
         headers = params.get("headers", {})
         body = params.get("body")
         timeout = params.get("timeout", 30)
-        
+
         async with httpx.AsyncClient() as client:
             try:
                 if method == "GET":
@@ -370,13 +370,13 @@ class HTTPSkillExecutor(BaseSkillExecutor):
                     response = await client.patch(url, headers=headers, json=body, timeout=timeout)
                 else:
                     return SkillResult(success=False, data=None, error=f"Unsupported HTTP method: {method}")
-                
+
                 # Try to parse as JSON
                 try:
                     data = response.json()
                 except:
                     data = response.text
-                
+
                 return SkillResult(
                     success=response.is_success,
                     data=data,
@@ -388,21 +388,21 @@ class HTTPSkillExecutor(BaseSkillExecutor):
 
 class FileSkillExecutor(BaseSkillExecutor):
     """Execute file system operations."""
-    
+
     def __init__(self, allowed_paths: Optional[List[str]] = None):
         self.allowed_paths = allowed_paths or []
-    
+
     def _is_path_allowed(self, path: str) -> bool:
         """Check if path is within allowed directories."""
         if not self.allowed_paths:
             return True  # Allow all if no restrictions
-        
+
         abs_path = os.path.abspath(path)
         for allowed in self.allowed_paths:
             if abs_path.startswith(os.path.abspath(allowed)):
                 return True
         return False
-    
+
     async def execute(self, skill_id: str, params: Dict[str, Any], credentials: Dict[str, str]) -> SkillResult:
         try:
             if skill_id == "file.read":
@@ -417,46 +417,46 @@ class FileSkillExecutor(BaseSkillExecutor):
                 return SkillResult(success=False, data=None, error=f"Unknown file skill: {skill_id}")
         except Exception as e:
             return SkillResult(success=False, data=None, error=str(e))
-    
+
     async def _read_file(self, params: Dict) -> SkillResult:
         path = params.get("path", "")
-        
+
         if not self._is_path_allowed(path):
             return SkillResult(success=False, data=None, error="Path not allowed")
-        
+
         if not os.path.exists(path):
             return SkillResult(success=False, data=None, error=f"File not found: {path}")
-        
+
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
-        
+
         return SkillResult(success=True, data={"path": path, "content": content})
-    
+
     async def _write_file(self, params: Dict) -> SkillResult:
         path = params.get("path", "")
         content = params.get("content", "")
-        
+
         if not self._is_path_allowed(path):
             return SkillResult(success=False, data=None, error="Path not allowed")
-        
+
         # Create directory if needed
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        
+
         with open(path, "w", encoding="utf-8") as f:
             f.write(content)
-        
+
         return SkillResult(success=True, data={"path": path, "bytes_written": len(content)})
-    
+
     async def _list_files(self, params: Dict) -> SkillResult:
         path = params.get("path", ".")
         pattern = params.get("pattern", "*")
-        
+
         if not self._is_path_allowed(path):
             return SkillResult(success=False, data=None, error="Path not allowed")
-        
+
         from pathlib import Path
         files = list(Path(path).glob(pattern))
-        
+
         return SkillResult(
             success=True,
             data=[{
@@ -466,7 +466,7 @@ class FileSkillExecutor(BaseSkillExecutor):
                 "size": f.stat().st_size if f.is_file() else None,
             } for f in files[:100]],  # Limit to 100 files
         )
-    
+
     async def _file_exists(self, params: Dict) -> SkillResult:
         path = params.get("path", "")
         exists = os.path.exists(path)
@@ -475,15 +475,15 @@ class FileSkillExecutor(BaseSkillExecutor):
 
 class ShellSkillExecutor(BaseSkillExecutor):
     """Execute shell commands (with safety restrictions)."""
-    
+
     ALLOWED_COMMANDS = ["ls", "cat", "head", "tail", "grep", "wc", "find", "echo", "pwd", "date"]
-    
+
     async def execute(self, skill_id: str, params: Dict[str, Any], credentials: Dict[str, str]) -> SkillResult:
         import asyncio
-        
+
         command = params.get("command", "")
         timeout = params.get("timeout", 30)
-        
+
         # Basic safety check
         first_word = command.split()[0] if command else ""
         if first_word not in self.ALLOWED_COMMANDS:
@@ -492,16 +492,16 @@ class ShellSkillExecutor(BaseSkillExecutor):
                 data=None,
                 error=f"Command '{first_word}' not allowed. Allowed: {', '.join(self.ALLOWED_COMMANDS)}",
             )
-        
+
         try:
             proc = await asyncio.create_subprocess_shell(
                 command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            
+
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-            
+
             return SkillResult(
                 success=proc.returncode == 0,
                 data={
@@ -518,7 +518,7 @@ class ShellSkillExecutor(BaseSkillExecutor):
 
 class SkillExecutorRegistry:
     """Registry of skill executors."""
-    
+
     def __init__(self):
         self.executors: Dict[str, BaseSkillExecutor] = {
             "github": GitHubSkillExecutor(),
@@ -528,12 +528,12 @@ class SkillExecutorRegistry:
             "file": FileSkillExecutor(),
             "shell": ShellSkillExecutor(),
         }
-    
+
     def get_executor(self, skill_id: str) -> Optional[BaseSkillExecutor]:
         """Get executor for a skill based on its ID prefix."""
         prefix = skill_id.split(".")[0]
         return self.executors.get(prefix)
-    
+
     async def execute_skill(
         self,
         skill_id: str,
@@ -542,14 +542,14 @@ class SkillExecutorRegistry:
     ) -> SkillResult:
         """Execute a skill by ID."""
         executor = self.get_executor(skill_id)
-        
+
         if not executor:
             return SkillResult(
                 success=False,
                 data=None,
                 error=f"No executor found for skill: {skill_id}",
             )
-        
+
         return await executor.execute(skill_id, params, credentials or {})
 
 

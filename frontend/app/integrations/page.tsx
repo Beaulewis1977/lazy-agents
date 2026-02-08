@@ -204,10 +204,10 @@ export default function IntegrationsPage() {
               {integrations.map((integration) => (
                 <div key={integration.id} className="card flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div style={{ 
-                      width: 48, height: 48, borderRadius: "var(--radius-lg)", 
-                      background: integration.status === 'connected' ? "var(--color-success-muted)" : "var(--color-bg-tertiary)", 
-                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" 
+                    <div style={{
+                      width: 48, height: 48, borderRadius: "var(--radius-lg)",
+                      background: integration.status === 'connected' ? "var(--color-success-muted)" : "var(--color-bg-tertiary)",
+                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem"
                     }}>
                       {INTEGRATION_ICONS[integration.type] || "🔗"}
                     </div>
@@ -219,8 +219,8 @@ export default function IntegrationsPage() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button 
-                      onClick={() => handleTest(integration.id)} 
+                    <button
+                      onClick={() => handleTest(integration.id)}
                       className="btn btn-ghost btn-sm"
                       disabled={testing === integration.id}
                     >

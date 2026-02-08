@@ -15,7 +15,7 @@ export default function AgentDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'skills' | 'schedule' | 'logs' | 'history'>('overview');
-  
+
   // Schedule state
   const [schedule, setSchedule] = useState<string>("");
   const [savingSchedule, setSavingSchedule] = useState(false);
@@ -57,18 +57,18 @@ export default function AgentDetailPage() {
     if (activeTab === 'history' && id) {
       void loadExecutions();
     }
-    
+
     // Connect to global logs when Logs tab is active
     if (activeTab === 'logs') {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const wsUrl = `${protocol}//${window.location.hostname}:8000/ws/logs`;
-      
+
       const ws = new WebSocket(wsUrl);
-      
+
       ws.onopen = () => {
         console.log('Connected to logs');
       };
-      
+
       ws.onmessage = (event) => {
         try {
           const log = JSON.parse(event.data);
@@ -172,7 +172,7 @@ export default function AgentDetailPage() {
       </div>
 
       <div className="container" style={{ padding: "var(--space-8)" }}>
-        
+
         {/* Tabs */}
         <div className="tabs mb-6 border-b border-border flex gap-4 overflow-x-auto">
           {(['overview', 'skills', 'schedule', 'logs', 'history'] as const).map(tab => (
@@ -202,7 +202,7 @@ export default function AgentDetailPage() {
                 </pre>
               </div>
             </div>
-            
+
             <div className="space-y-6">
               <div className="card">
                 <h3 className="mb-4">Configuration</h3>
@@ -251,7 +251,7 @@ export default function AgentDetailPage() {
                 <h3 className="mb-0">Enabled Skills ({agent.skills.length})</h3>
                 <Link href={`/skills`} className="btn btn-sm btn-ghost">Manage Skills →</Link>
               </div>
-              
+
               {agent.skills.length === 0 ? (
                 <p className="text-muted">No skills enabled.</p>
               ) : (
@@ -271,7 +271,7 @@ export default function AgentDetailPage() {
                 </div>
               )}
             </div>
-            
+
             <div className="card">
               <h3 className="mb-4">Integrations ({agent.integrations.length})</h3>
               {agent.integrations.length === 0 ? (
@@ -302,7 +302,7 @@ export default function AgentDetailPage() {
             <p className="text-secondary mb-6">
               Configure a cron schedule for this agent to run automatically.
             </p>
-            
+
             <div className="input-group mb-6">
               <label className="input-label">Cron Expression</label>
               <input
@@ -331,8 +331,8 @@ export default function AgentDetailPage() {
                   <p className="text-sm text-muted">No active schedule</p>
                 )}
               </div>
-              <button 
-                onClick={handleSaveSchedule} 
+              <button
+                onClick={handleSaveSchedule}
                 className="btn btn-primary"
                 disabled={savingSchedule}
               >
@@ -360,7 +360,7 @@ export default function AgentDetailPage() {
                 <div key={i} className="flex gap-3 hover:bg-white/5 p-1 rounded">
                   <span className="text-gray-500 shrink-0 w-24">{new Date(log.timestamp).toLocaleTimeString()}</span>
                   <span className={`shrink-0 w-16 font-bold ${
-                    log.level === 'error' ? 'text-red-400' : 
+                    log.level === 'error' ? 'text-red-400' :
                     log.level === 'warn' ? 'text-yellow-400' : 'text-blue-400'
                   }`}>
                     {log.level.toUpperCase()}
@@ -406,8 +406,8 @@ export default function AgentDetailPage() {
                         <td className="p-3"><span className="badge badge-neutral text-xs">{exec.trigger}</span></td>
                         <td className="p-3 text-secondary">{exec.started_at ? new Date(exec.started_at).toLocaleString() : '-'}</td>
                         <td className="p-3 text-secondary">
-                          {exec.completed_at && exec.started_at ? 
-                            `${((new Date(exec.completed_at).getTime() - new Date(exec.started_at).getTime()) / 1000).toFixed(1)}s` 
+                          {exec.completed_at && exec.started_at ?
+                            `${((new Date(exec.completed_at).getTime() - new Date(exec.started_at).getTime()) / 1000).toFixed(1)}s`
                             : '-'}
                         </td>
                         <td className="p-3 text-secondary">{(exec.tokens_input + exec.tokens_output).toLocaleString()}</td>

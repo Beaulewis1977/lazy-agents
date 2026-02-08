@@ -139,22 +139,22 @@ async def list_skills(
 ):
     """List all available skills."""
     skills = []
-    
+
     # Add built-in skills
     if include_builtin:
         for skill_data in BUILTIN_SKILLS:
             if category is None or skill_data["category"] == category:
                 skills.append(SkillResponse(**skill_data))
-    
+
     # Add custom skills from database
     query = select(Skill).where(Skill.is_builtin == False)  # noqa: E712
     if category:
         query = query.where(Skill.category == category)
-    
+
     result = await db.execute(query)
     for skill in result.scalars().all():
         skills.append(SkillResponse.model_validate(skill))
-    
+
     return skills
 
 
@@ -168,17 +168,17 @@ async def get_skill(
     for skill_data in BUILTIN_SKILLS:
         if skill_data["id"] == skill_id:
             return SkillResponse(**skill_data)
-    
+
     # Check database
     result = await db.execute(select(Skill).where(Skill.id == skill_id))
     skill = result.scalar_one_or_none()
-    
+
     if not skill:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Skill {skill_id} not found",
         )
-    
+
     return skill
 
 
@@ -195,7 +195,7 @@ async def create_skill(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Skill {skill_data.id} already exists",
         )
-    
+
     skill = Skill(
         **skill_data.model_dump(),
         is_builtin=False,
@@ -221,22 +221,22 @@ async def update_skill(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot update built-in skills",
             )
-    
+
     result = await db.execute(select(Skill).where(Skill.id == skill_id))
     skill = result.scalar_one_or_none()
-    
+
     if not skill:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Skill {skill_id} not found",
         )
-    
+
     # Update fields
     allowed_fields = ["name", "description", "category", "parameters", "implementation"]
     for field, value in updates.items():
         if field in allowed_fields:
             setattr(skill, field, value)
-    
+
     await db.commit()
     await db.refresh(skill)
     return skill
@@ -255,16 +255,16 @@ async def delete_skill(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot delete built-in skills",
             )
-    
+
     result = await db.execute(select(Skill).where(Skill.id == skill_id))
     skill = result.scalar_one_or_none()
-    
+
     if not skill:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Skill {skill_id} not found",
         )
-    
+
     await db.delete(skill)
     await db.commit()
 
@@ -286,17 +286,17 @@ async def get_skill_config(
                 "templates": {},
                 "references": [],
             }
-    
+
     # Check database
     result = await db.execute(select(Skill).where(Skill.id == skill_id))
     skill = result.scalar_one_or_none()
-    
+
     if not skill:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Skill {skill_id} not found",
         )
-    
+
     # Parse implementation if it's JSON
     import json
     implementation_data = {}
@@ -305,7 +305,7 @@ async def get_skill_config(
             implementation_data = json.loads(skill.implementation)
         except json.JSONDecodeError:
             implementation_data = {"instructions": skill.implementation}
-    
+
     return {
         "id": skill.id,
         "name": skill.name,
@@ -329,20 +329,20 @@ async def load_skill_from_path(
 ):
     """Load a skill from a filesystem path (MD file or folder with SKILL.md)."""
     from app.runtime.skill_loader import SkillLoader
-    
+
     loader = SkillLoader()
     loaded_skill = loader.load_skill_from_path(path)
-    
+
     if not loaded_skill:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Could not load skill from path: {path}",
         )
-    
+
     # Check if skill already exists
     result = await db.execute(select(Skill).where(Skill.id == loaded_skill.id))
     existing = result.scalar_one_or_none()
-    
+
     if existing:
         # Update existing skill
         skill_data = loader.to_db_format(loaded_skill)
@@ -355,14 +355,14 @@ async def load_skill_from_path(
             "message": f"Skill '{loaded_skill.id}' updated from {path}",
             "skill": SkillResponse.model_validate(existing),
         }
-    
+
     # Create new skill
     skill_data = loader.to_db_format(loaded_skill)
     skill = Skill(**skill_data)
     db.add(skill)
     await db.commit()
     await db.refresh(skill)
-    
+
     return {
         "message": f"Skill '{loaded_skill.id}' loaded from {path}",
         "skill": SkillResponse.model_validate(skill),
@@ -376,19 +376,19 @@ async def scan_directory_for_skills(
 ):
     """Scan a directory for skill files and load them all."""
     from app.runtime.skill_loader import SkillLoader
-    
+
     loader = SkillLoader(skill_dirs=[directory])
     loaded_skills = loader.load_all_skills()
-    
+
     results = []
     for loaded_skill in loaded_skills:
         try:
             # Check if skill already exists
             result = await db.execute(select(Skill).where(Skill.id == loaded_skill.id))
             existing = result.scalar_one_or_none()
-            
+
             skill_data = loader.to_db_format(loaded_skill)
-            
+
             if existing:
                 for field, value in skill_data.items():
                     if field != "id":
@@ -402,7 +402,7 @@ async def scan_directory_for_skills(
                 results.append({"id": loaded_skill.id, "status": "created"})
         except Exception as e:
             results.append({"id": loaded_skill.id, "status": "error", "error": str(e)})
-    
+
     return {
         "directory": directory,
         "skills_found": len(loaded_skills),
@@ -416,16 +416,15 @@ async def list_skill_categories(
 ):
     """List all available skill categories."""
     categories = set()
-    
+
     # From built-in skills
     for skill in BUILTIN_SKILLS:
         categories.add(skill["category"])
-    
+
     # From database
     result = await db.execute(select(Skill.category).distinct())
     for row in result.scalars().all():
         if row:
             categories.add(row)
-    
-    return sorted(list(categories))
 
+    return sorted(list(categories))

@@ -10,7 +10,7 @@ interface FetchOptions extends RequestInit {
 
 async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
   const { params, ...init } = options;
-  
+
   let url = `${API_BASE}${endpoint}`;
   if (params) {
     const searchParams = new URLSearchParams();
@@ -20,7 +20,7 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
     const qs = searchParams.toString();
     if (qs) url += `?${qs}`;
   }
-  
+
   const response = await fetch(url, {
     ...init,
     headers: {
@@ -28,7 +28,7 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
       ...init.headers,
     },
   });
-  
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'Request failed' }));
     throw new Error(error.detail || `API error: ${response.status}`);
@@ -182,24 +182,24 @@ export interface AgentConfig {
 
 // Agents API
 export const agentsAPI = {
-  list: (skip = 0, limit = 100) => 
+  list: (skip = 0, limit = 100) =>
     fetchAPI<Agent[]>('/api/agents', { params: { skip, limit } }),
-  
-  get: (id: string) => 
+
+  get: (id: string) =>
     fetchAPI<Agent>(`/api/agents/${id}`),
 
-  getConfig: (id: string) => 
+  getConfig: (id: string) =>
     fetchAPI<AgentConfig>(`/api/agents/${id}/config`),
-  
+
   create: (data: { name: string; description?: string; model?: string; system_prompt?: string }) =>
     fetchAPI<Agent>('/api/agents', { method: 'POST', body: JSON.stringify(data) }),
-  
+
   update: (id: string, data: Partial<Agent>) =>
     fetchAPI<Agent>(`/api/agents/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-  
+
   delete: (id: string) =>
     fetchAPI<void>(`/api/agents/${id}`, { method: 'DELETE' }),
-  
+
   run: (id: string, input?: Record<string, unknown>) =>
     fetchAPI<Execution>(`/api/agents/${id}/run`, { method: 'POST', body: JSON.stringify({ input: input || {} }) }),
 };
@@ -208,10 +208,10 @@ export const agentsAPI = {
 export const skillsAPI = {
   list: (category?: string) =>
     fetchAPI<Skill[]>('/api/skills', { params: { category } }),
-  
+
   get: (id: string) =>
     fetchAPI<Skill>(`/api/skills/${id}`),
-  
+
   getConfig: (id: string) =>
     fetchAPI<{
       id: string;
@@ -227,28 +227,28 @@ export const skillsAPI = {
       references: string[];
       source_path: string | null;
     }>(`/api/skills/${id}/config`),
-  
+
   create: (data: { id: string; name: string; description?: string; category: string; parameters?: Record<string, unknown>; implementation?: string }) =>
     fetchAPI<Skill>('/api/skills', { method: 'POST', body: JSON.stringify(data) }),
-  
+
   update: (id: string, data: Record<string, unknown>) =>
     fetchAPI<Skill>(`/api/skills/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-  
+
   delete: (id: string) =>
     fetchAPI<void>(`/api/skills/${id}`, { method: 'DELETE' }),
-  
+
   loadFromPath: (path: string) =>
-    fetchAPI<{ message: string; skill: Skill }>('/api/skills/load-from-path', { 
-      method: 'POST', 
-      params: { path } 
+    fetchAPI<{ message: string; skill: Skill }>('/api/skills/load-from-path', {
+      method: 'POST',
+      params: { path }
     }),
-  
+
   scanDirectory: (directory: string) =>
-    fetchAPI<{ directory: string; skills_found: number; results: { id: string; status: string; error?: string }[] }>('/api/skills/scan-directory', { 
-      method: 'POST', 
-      params: { directory } 
+    fetchAPI<{ directory: string; skills_found: number; results: { id: string; status: string; error?: string }[] }>('/api/skills/scan-directory', {
+      method: 'POST',
+      params: { directory }
     }),
-  
+
   categories: () =>
     fetchAPI<string[]>('/api/skills/categories/list'),
 };
@@ -257,16 +257,16 @@ export const skillsAPI = {
 export const integrationsAPI = {
   list: () =>
     fetchAPI<Integration[]>('/api/integrations'),
-  
+
   types: () =>
     fetchAPI<{ type: string; name: string; description: string; required_credentials: string[] }[]>('/api/integrations/types'),
-  
+
   create: (data: { type: string; name: string; credentials: Record<string, string> }) =>
     fetchAPI<Integration>('/api/integrations', { method: 'POST', body: JSON.stringify(data) }),
-  
+
   delete: (id: string) =>
     fetchAPI<void>(`/api/integrations/${id}`, { method: 'DELETE' }),
-  
+
   test: (id: string) =>
     fetchAPI<{ success: boolean; message: string }>(`/api/integrations/${id}/test`, { method: 'POST' }),
 };
@@ -310,13 +310,13 @@ export const mcpServersAPI = {
 export const executionsAPI = {
   list: (agentId?: string, status?: string, limit = 50) =>
     fetchAPI<Execution[]>('/api/executions', { params: { agent_id: agentId, status, limit } }),
-  
+
   get: (id: string) =>
     fetchAPI<Execution & { steps: unknown[] }>(`/api/executions/${id}`),
-  
+
   stats: () =>
     fetchAPI<ExecutionStats>('/api/executions/stats'),
-  
+
   cancel: (id: string) =>
     fetchAPI<Execution>(`/api/executions/${id}/cancel`, { method: 'POST' }),
 };
@@ -325,7 +325,7 @@ export const executionsAPI = {
 export const healthAPI = {
   check: () =>
     fetchAPI<{ status: string; version: string }>('/health'),
-  
+
   ready: () =>
     fetchAPI<{ status: string; database: string; timestamp: string }>('/health/ready'),
 };

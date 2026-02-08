@@ -27,7 +27,7 @@ export default function SkillsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
-  
+
   // Create State
   const [showCreate, setShowCreate] = useState(false);
   const [newSkill, setNewSkill] = useState({ id: "", name: "", description: "", category: "custom" });
@@ -105,8 +105,8 @@ export default function SkillsPage() {
     }
   }
 
-  const filteredSkills = activeCategory === "all" 
-    ? skills 
+  const filteredSkills = activeCategory === "all"
+    ? skills
     : skills.filter(s => s.category === activeCategory);
 
   if (loading) return (
@@ -155,13 +155,13 @@ export default function SkillsPage() {
               </div>
 
               <div className="tabs flex gap-4 mb-4 border-b border-border">
-                <button 
+                <button
                   className={`pb-2 px-2 ${importType === 'file' ? 'border-b-2 border-primary font-bold' : 'text-muted'}`}
                   onClick={() => { setImportType('file'); setImportResult(null); }}
                 >
                   Single File (MD)
                 </button>
-                <button 
+                <button
                   className={`pb-2 px-2 ${importType === 'directory' ? 'border-b-2 border-primary font-bold' : 'text-muted'}`}
                   onClick={() => { setImportType('directory'); setImportResult(null); }}
                 >
@@ -182,8 +182,8 @@ export default function SkillsPage() {
                     placeholder={importType === 'file' ? "/home/user/skills/my_skill.md" : "/home/user/skills/"}
                   />
                   <p className="text-xs text-muted mt-1">
-                    {importType === 'file' 
-                      ? "Current machine path to a markdown skill file." 
+                    {importType === 'file'
+                      ? "Current machine path to a markdown skill file."
                       : "Recursive scan for skill files in this folder."}
                   </p>
                 </div>

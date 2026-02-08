@@ -1,8 +1,8 @@
 # LazyAgents - Product Requirements Document
 
-> **Version:** 1.0.0  
-> **Last Updated:** 2026-02-07  
-> **Status:** Draft  
+> **Version:** 1.0.0
+> **Last Updated:** 2026-02-07
+> **Status:** Draft
 > **Author:** LazyDevTools
 
 ---

@@ -62,10 +62,10 @@ export default function SettingsPage() {
   function handleSave() {
     setSaving(true);
     setSaved(false);
-    
+
     // Save to localStorage
     localStorage.setItem('lazyagents_settings', JSON.stringify(settings));
-    
+
     // In a real app, you'd also save to the backend
     setTimeout(() => {
       setSaving(false);
@@ -206,7 +206,7 @@ export default function SettingsPage() {
             LazyAgents is self-hosted. All your data stays on your machine.
           </p>
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={() => {
                 if (confirm('Export all your data as JSON?')) {
                   const data = { settings, exportedAt: new Date().toISOString() };
@@ -217,7 +217,7 @@ export default function SettingsPage() {
                   a.download = 'lazyagents-export.json';
                   a.click();
                 }
-              }} 
+              }}
               className="btn btn-secondary"
             >
               📥 Export Data

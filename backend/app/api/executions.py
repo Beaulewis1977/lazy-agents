@@ -89,12 +89,12 @@ async def list_executions(
 ):
     """List executions with optional filtering."""
     query = select(Execution).order_by(desc(Execution.created_at)).offset(skip).limit(limit)
-    
+
     if agent_id:
         query = query.where(Execution.agent_id == agent_id)
     if status:
         query = query.where(Execution.status == status)
-    
+
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -112,30 +112,30 @@ async def get_execution_stats(
         func.sum(Execution.tokens_output).label("total_tokens_output"),
         func.sum(Execution.cost_cents).label("total_cost_cents"),
     )
-    
+
     if agent_id:
         query = query.where(Execution.agent_id == agent_id)
-    
+
     result = await db.execute(query)
     row = result.one()
-    
+
     # Get success count
     success_query = select(func.count(Execution.id)).where(Execution.status == "success")
     if agent_id:
         success_query = success_query.where(Execution.agent_id == agent_id)
     success_result = await db.execute(success_query)
     successful = success_result.scalar() or 0
-    
+
     # Get failed count
     failed_query = select(func.count(Execution.id)).where(Execution.status == "failed")
     if agent_id:
         failed_query = failed_query.where(Execution.agent_id == agent_id)
     failed_result = await db.execute(failed_query)
     failed = failed_result.scalar() or 0
-    
+
     total = row.total or 0
     success_rate = (successful / total * 100) if total > 0 else 0.0
-    
+
     return {
         "total": total,
         "successful": successful,
@@ -154,13 +154,13 @@ async def get_execution(
     """Get an execution by ID with all steps."""
     result = await db.execute(select(Execution).where(Execution.id == execution_id))
     execution = result.scalar_one_or_none()
-    
+
     if not execution:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Execution {execution_id} not found",
         )
-    
+
     # Load steps
     steps_result = await db.execute(
         select(ExecutionStep)
@@ -168,7 +168,7 @@ async def get_execution(
         .order_by(ExecutionStep.step_number)
     )
     steps = steps_result.scalars().all()
-    
+
     response = ExecutionResponse.model_validate(execution)
     response.steps = [ExecutionStepResponse.model_validate(s) for s in steps]
     return response
@@ -182,21 +182,21 @@ async def cancel_execution(
     """Cancel a running execution."""
     result = await db.execute(select(Execution).where(Execution.id == execution_id))
     execution = result.scalar_one_or_none()
-    
+
     if not execution:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Execution {execution_id} not found",
         )
-    
+
     if execution.status not in ["pending", "running"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot cancel execution with status: {execution.status}",
         )
-    
+
     execution.status = "cancelled"
     execution.completed_at = datetime.utcnow()
     await db.commit()
-    
+
     return {"message": "Execution cancelled", "execution_id": execution_id}

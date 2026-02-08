@@ -35,10 +35,10 @@ async def init_db():
     if settings.DATABASE_URL.startswith("sqlite"):
         db_path = settings.DATABASE_URL.replace("sqlite+aiosqlite:///", "")
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Import models to register them with Base
     from app.models import agent, skill, integration, execution, mcp_server  # noqa: F401
-    
+
     # Create all tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

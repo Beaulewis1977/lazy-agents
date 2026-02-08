@@ -134,11 +134,11 @@ async def list_integrations(
 ):
     """List all configured integrations."""
     from app.models.integration import Integration
-    
+
     query = select(Integration)
     if type:
         query = query.where(Integration.type == type)
-    
+
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -151,14 +151,14 @@ async def create_integration(
     """Create a new integration."""
     from app.models.integration import Integration
     import json
-    
+
     # Validate integration type
     if integration_data.type not in INTEGRATION_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unknown integration type: {integration_data.type}",
         )
-    
+
     # Validate required credentials
     type_info = INTEGRATION_TYPES[integration_data.type]
     for cred in type_info.required_credentials:
@@ -167,10 +167,10 @@ async def create_integration(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Missing required credential: {cred}",
             )
-    
+
     # Encrypt credentials
     encrypted_creds = encrypt_secret(json.dumps(integration_data.credentials))
-    
+
     integration = Integration(
         type=integration_data.type,
         name=integration_data.name,
@@ -178,7 +178,7 @@ async def create_integration(
         permissions=integration_data.permissions,
         config=integration_data.config,
     )
-    
+
     db.add(integration)
     await db.commit()
     await db.refresh(integration)
@@ -192,16 +192,16 @@ async def get_integration(
 ):
     """Get an integration by ID."""
     from app.models.integration import Integration
-    
+
     result = await db.execute(select(Integration).where(Integration.id == integration_id))
     integration = result.scalar_one_or_none()
-    
+
     if not integration:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Integration {integration_id} not found",
         )
-    
+
     return integration
 
 
@@ -212,16 +212,16 @@ async def delete_integration(
 ):
     """Delete an integration."""
     from app.models.integration import Integration
-    
+
     result = await db.execute(select(Integration).where(Integration.id == integration_id))
     integration = result.scalar_one_or_none()
-    
+
     if not integration:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Integration {integration_id} not found",
         )
-    
+
     await db.delete(integration)
     await db.commit()
 
@@ -233,20 +233,20 @@ async def test_integration(
 ):
     """Test an integration connection."""
     from app.models.integration import Integration
-    
+
     result = await db.execute(select(Integration).where(Integration.id == integration_id))
     integration = result.scalar_one_or_none()
-    
+
     if not integration:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Integration {integration_id} not found",
         )
-    
+
     # Decrypt credentials
     from app.core.security import decrypt_secret
     import json
-    
+
     creds = {}
     if integration.credentials_encrypted:
         try:
@@ -256,19 +256,19 @@ async def test_integration(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to decrypt credentials",
             )
-    
+
     try:
         # Test based on type
         if integration.type == "openai":
             from openai import OpenAI
             client = OpenAI(api_key=creds.get("api_key"))
             client.models.list(limit=1)
-            
+
         elif integration.type == "anthropic":
             from anthropic import Anthropic
             client = Anthropic(api_key=creds.get("api_key"))
             # Just listing models is a good lightweight check
-            # Note: client.models.list() might not be available in older SDKs, 
+            # Note: client.models.list() might not be available in older SDKs,
             # but usually messages.create with max_tokens=1 works.
             # Using messages.create as definitive test
             client.messages.create(
@@ -276,12 +276,12 @@ async def test_integration(
                 max_tokens=1,
                 messages=[{"role": "user", "content": "ping"}]
             )
-            
+
         elif integration.type == "google":
             import google.generativeai as genai
             genai.configure(api_key=creds.get("api_key"))
             list(genai.list_models(page_size=1))
-            
+
         elif integration.type == "github":
             import httpx
             async with httpx.AsyncClient() as client:
@@ -293,7 +293,7 @@ async def test_integration(
                     }
                 )
                 resp.raise_for_status()
-        
+
         elif integration.type == "discord":
             import httpx
             async with httpx.AsyncClient() as client:
@@ -319,12 +319,12 @@ async def test_integration(
                     raise Exception(f"Slack auth failed: {data.get('error')}")
 
         # Add other types as needed
-        
+
         return {
             "status": "ok",
             "message": f"Successfully connected to {integration.name}",
         }
-        
+
     except Exception as e:
         return {
             "status": "error",

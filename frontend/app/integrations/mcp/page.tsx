@@ -32,7 +32,7 @@ const initialFormState: FormState = {
 
 function parseArgs(argsText: string): string[] {
   return argsText
-    .split(/\r?\n|,/) 
+    .split(/\r?\n|,/)
     .map((arg) => arg.trim())
     .filter(Boolean);
 }
