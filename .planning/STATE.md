@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** Users can securely run and connect agents across all their tools from one place, with production-ready behavior on a self-hosted single-VM deployment.
-**Current focus:** Phase 1 - Security and Deployment Baseline
+**Current focus:** Phase 2 - MCP Server Control Plane
 
 ## Current Position
 
-Phase: 1 of 5 (Security and Deployment Baseline)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-08 — Completed 01-03-PLAN.md
+Phase: 2 of 5 (MCP Server Control Plane)
+Plan: 0 of 3 in current phase
+Status: Ready to plan
+Last activity: 2026-02-08 — Phase 1 verified complete (01-VERIFICATION.md)
 
 Progress: [██░░░░░░░░] 20%
 
@@ -20,18 +20,18 @@ Progress: [██░░░░░░░░] 20%
 
 **Velocity:**
 - Total plans completed: 3
-- Average duration: 3 min
-- Total execution time: 0.15 hours
+- Average duration: 27 min
+- Total execution time: 1.37 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 | 3 | 9 min | 3 min |
+| 1 | 3 | 82 min | 27 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (1 min), 01-02 (7 min), 01-03 (1 min)
-- Trend: Stable
+- Last 5 plans: 01-01 (1 min), 01-02 (7 min), 01-03 (74 min)
+- Trend: Improving reliability
 
 *Updated after each plan completion*
 
@@ -50,6 +50,8 @@ Recent decisions affecting current work:
 - Phase 01-02: Settings UI stores only non-sensitive preferences; secrets remain transient session inputs.
 - Phase 01-03: Production deployment path is explicit via `docker-compose.yml` + `compose.production.yaml` merge.
 - Phase 01-03: Operator setup docs now include production env guardrails and `/health` + `/health/ready` verification steps.
+- Phase 01-03: Production overlay uses compose override semantics to remove dev bind mounts and preserve only required data mounts.
+- Phase 01-03: Worker service is profile-gated (`worker`) until a concrete backend worker entrypoint exists.
 
 ### Pending Todos
 
@@ -62,6 +64,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-08 05:18
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-02-08 06:32
+Stopped at: Phase 1 verified and complete; ready for Phase 2 planning
 Resume file: None
