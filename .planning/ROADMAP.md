@@ -46,9 +46,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: Implement MCP data model and CRUD API endpoints
-- [ ] 02-02: Build manager lifecycle state machine with restart/sync operations
-- [ ] 02-03: Add MCP server management UI with status and error surfaces
+- [ ] 02-01-PLAN.md — Implement MCP data model and CRUD API endpoints
+- [ ] 02-02-PLAN.md — Build manager lifecycle state machine with restart/sync operations
+- [ ] 02-03-PLAN.md — Add MCP server management UI with status and error surfaces
 
 ### Phase 3: Agent UX and MCP Tool Visibility
 **Goal**: Operators can fully manage agent workflows and inspect available MCP tools before execution.
