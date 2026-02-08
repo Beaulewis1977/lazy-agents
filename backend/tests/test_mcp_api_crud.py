@@ -23,6 +23,7 @@ def _load_app_modules():
 @pytest.fixture
 def app_modules(monkeypatch, tmp_path):
     monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{tmp_path}/mcp-crud-env.db")
+    monkeypatch.setenv("APP_DEBUG", "true")
     return _load_app_modules()
 
 
@@ -43,6 +44,8 @@ async def db_session_factory(app_modules, tmp_path):
 
 @pytest_asyncio.fixture
 async def test_client(app_modules, db_session_factory):
+    from app.core.security import verify_api_key
+
     mcp_router, _, get_db, _ = app_modules
     app = FastAPI()
     app.include_router(mcp_router)
@@ -58,7 +61,12 @@ async def test_client(app_modules, db_session_factory):
         finally:
             await session.close()
 
+    def override_verify_api_key():
+        """Allow all requests in test mode."""
+        return True
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[verify_api_key] = override_verify_api_key
 
     async with AsyncClient(
         transport=ASGITransport(app=app),

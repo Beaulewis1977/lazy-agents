@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
@@ -18,11 +18,7 @@ export default function MCPToolsPage() {
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const [syncing, setSyncing] = useState(false);
 
-  useEffect(() => {
-    loadServer();
-  }, [serverId]);
-
-  async function loadServer() {
+  const loadServer = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -33,7 +29,11 @@ export default function MCPToolsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [serverId]);
+
+  useEffect(() => {
+    loadServer();
+  }, [loadServer]);
 
   async function handleSync() {
     if (!server) return;
