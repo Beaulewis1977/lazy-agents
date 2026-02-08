@@ -15,6 +15,26 @@ export default function AgentDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'skills' | 'schedule' | 'logs' | 'history'>('overview');
+  const [selectedExecutionId, setSelectedExecutionId] = useState<string | null>(null);
+  const [selectedExecutionDetails, setSelectedExecutionDetails] = useState<{
+    id: string;
+    status: string;
+    started_at: string | null;
+    completed_at: string | null;
+    tokens_input: number;
+    tokens_output: number;
+    output_data: Record<string, unknown> | null;
+    error_message: string | null;
+    steps: Array<{
+      id: string;
+      step_number: number;
+      name: string;
+      step_type: string;
+      status: string;
+      error_message: string | null;
+    }>;
+  } | null>(null);
+  const [loadingExecution, setLoadingExecution] = useState(false);
 
   // Schedule state
   const [schedule, setSchedule] = useState<string>("");
@@ -102,16 +122,46 @@ export default function AgentDetailPage() {
     if (!agent) return;
     try {
       await agentsAPI.run(agent.id);
-      // Switch to logs tab to see output
-      setActiveTab('logs');
-      // Also refresh stats/executions in background
-      setTimeout(() => {
-        loadAgent();
-        if (activeTab === 'history') loadExecutions();
-      }, 2000);
+      // Switch to history tab to see execution
+      setActiveTab('history');
+      // Reload executions
+      await loadExecutions();
+      // Set up polling for status updates
+      const pollInterval = setInterval(async () => {
+        const data = await executionsAPI.list(id, undefined, 50);
+        setExecutions(data);
+        // Stop polling if latest execution is complete
+        if (data[0] && data[0].status !== 'pending' && data[0].status !== 'running') {
+          clearInterval(pollInterval);
+          loadAgent(); // Refresh stats
+        }
+      }, 3000);
+      // Clear interval after 5 minutes max
+      setTimeout(() => clearInterval(pollInterval), 300000);
     } catch (err) {
       console.error('Failed to run agent', err);
       alert('Failed to run agent');
+    }
+  }
+
+  async function handleExecutionClick(executionId: string) {
+    if (selectedExecutionId === executionId) {
+      // Collapse
+      setSelectedExecutionId(null);
+      setSelectedExecutionDetails(null);
+      return;
+    }
+
+    setSelectedExecutionId(executionId);
+    setLoadingExecution(true);
+    try {
+      const details = await executionsAPI.get(executionId);
+      setSelectedExecutionDetails(details);
+    } catch (err) {
+      console.error('Failed to load execution details', err);
+      alert('Failed to load execution details');
+    } finally {
+      setLoadingExecution(false);
     }
   }
 
@@ -168,6 +218,7 @@ export default function AgentDetailPage() {
         </div>
         <div className="flex gap-2">
           <button onClick={handleRun} className="btn btn-primary">▶️ Run Now</button>
+          <Link href={`/agents/${agent.id}/edit`} className="btn btn-secondary">✏️ Edit</Link>
           <button onClick={handleToggleStatus} className="btn btn-secondary">
             {agent.status === 'active' ? '⏸️ Pause' : '▶️ Activate'}
           </button>
@@ -397,26 +448,129 @@ export default function AgentDetailPage() {
                       <th className="p-3 font-medium">Duration</th>
                       <th className="p-3 font-medium">Tokens</th>
                       <th className="p-3 font-medium">Cost</th>
+                      <th className="p-3 font-medium"></th>
                     </tr>
                   </thead>
                   <tbody className="text-sm">
                     {executions.map((exec) => (
-                      <tr key={exec.id} className="border-b border-border/50 hover:bg-neutral-muted/50">
-                        <td className="p-3">
-                          <span className={`badge ${exec.status === 'success' ? 'badge-success' : exec.status === 'failed' ? 'badge-error' : 'badge-neutral'}`}>
-                            {exec.status}
-                          </span>
-                        </td>
-                        <td className="p-3"><span className="badge badge-neutral text-xs">{exec.trigger}</span></td>
-                        <td className="p-3 text-secondary">{exec.started_at ? new Date(exec.started_at).toLocaleString() : '-'}</td>
-                        <td className="p-3 text-secondary">
-                          {exec.completed_at && exec.started_at ?
-                            `${((new Date(exec.completed_at).getTime() - new Date(exec.started_at).getTime()) / 1000).toFixed(1)}s`
-                            : '-'}
-                        </td>
-                        <td className="p-3 text-secondary">{(exec.tokens_input + exec.tokens_output).toLocaleString()}</td>
-                        <td className="p-3 text-secondary">${(exec.cost_cents / 100).toFixed(4)}</td>
-                      </tr>
+                      <>
+                        <tr
+                          key={exec.id}
+                          className="border-b border-border/50 hover:bg-neutral-muted/50 cursor-pointer"
+                          onClick={() => handleExecutionClick(exec.id)}
+                        >
+                          <td className="p-3">
+                            <span className={`badge ${exec.status === 'success' ? 'badge-success' : exec.status === 'failed' ? 'badge-error' : 'badge-neutral'}`}>
+                              {exec.status}
+                            </span>
+                          </td>
+                          <td className="p-3"><span className="badge badge-neutral text-xs">{exec.trigger}</span></td>
+                          <td className="p-3 text-secondary">{exec.started_at ? new Date(exec.started_at).toLocaleString() : '-'}</td>
+                          <td className="p-3 text-secondary">
+                            {exec.completed_at && exec.started_at ?
+                              `${((new Date(exec.completed_at).getTime() - new Date(exec.started_at).getTime()) / 1000).toFixed(1)}s`
+                              : '-'}
+                          </td>
+                          <td className="p-3 text-secondary">{(exec.tokens_input + exec.tokens_output).toLocaleString()}</td>
+                          <td className="p-3 text-secondary">${(exec.cost_cents / 100).toFixed(4)}</td>
+                          <td className="p-3 text-right">
+                            <span className="text-xs text-muted">
+                              {selectedExecutionId === exec.id ? '▼' : '▶'}
+                            </span>
+                          </td>
+                        </tr>
+                        {selectedExecutionId === exec.id && (
+                          <tr>
+                            <td colSpan={7} className="p-0">
+                              <div className="p-6 border-t border-border" style={{ background: "var(--color-bg-primary)" }}>
+                                {loadingExecution ? (
+                                  <p className="text-secondary text-center">Loading execution details...</p>
+                                ) : selectedExecutionDetails ? (
+                                  <div className="flex flex-col gap-6">
+                                    {/* Metadata */}
+                                    <div className="grid grid-cols-4 gap-4 text-sm">
+                                      <div>
+                                        <span className="text-muted">Execution ID</span>
+                                        <div className="font-mono text-xs mt-1">{selectedExecutionDetails.id.slice(0, 8)}</div>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted">Started</span>
+                                        <div className="mt-1">{selectedExecutionDetails.started_at ? new Date(selectedExecutionDetails.started_at).toLocaleString() : '-'}</div>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted">Duration</span>
+                                        <div className="mt-1">
+                                          {selectedExecutionDetails.completed_at && selectedExecutionDetails.started_at ?
+                                            `${((new Date(selectedExecutionDetails.completed_at).getTime() - new Date(selectedExecutionDetails.started_at).getTime()) / 1000).toFixed(1)}s`
+                                            : '-'}
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <span className="text-muted">Total Tokens</span>
+                                        <div className="mt-1">{(selectedExecutionDetails.tokens_input + selectedExecutionDetails.tokens_output).toLocaleString()}</div>
+                                      </div>
+                                    </div>
+
+                                    {/* Output Data */}
+                                    {selectedExecutionDetails.output_data && (
+                                      <div>
+                                        <h4 className="mb-3 font-medium">Final Output</h4>
+                                        <pre className="p-4 rounded text-sm overflow-x-auto" style={{ background: "var(--color-bg-tertiary)", maxHeight: 400 }}>
+                                          {JSON.stringify(selectedExecutionDetails.output_data, null, 2)}
+                                        </pre>
+                                      </div>
+                                    )}
+
+                                    {/* Execution Steps */}
+                                    {selectedExecutionDetails.steps && selectedExecutionDetails.steps.length > 0 && (
+                                      <div>
+                                        <h4 className="mb-3 font-medium">Execution Steps</h4>
+                                        <div className="flex flex-col gap-3">
+                                          {selectedExecutionDetails.steps.map((step) => (
+                                            <div key={step.id} className="p-3 rounded" style={{ background: "var(--color-bg-tertiary)" }}>
+                                              <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-xs text-muted">#{step.step_number}</span>
+                                                  <span className="font-medium">{step.name}</span>
+                                                  <span className="badge badge-neutral text-xs">{step.step_type}</span>
+                                                </div>
+                                                <span className={`badge ${
+                                                  step.status === 'success' ? 'badge-success' :
+                                                  step.status === 'failed' ? 'badge-error' :
+                                                  'badge-neutral'
+                                                } text-xs`}>
+                                                  {step.status}
+                                                </span>
+                                              </div>
+                                              {step.error_message && (
+                                                <p className="text-xs mt-2" style={{ color: "var(--color-error)" }}>
+                                                  {step.error_message}
+                                                </p>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Error Display */}
+                                    {selectedExecutionDetails.error_message && (
+                                      <div className="p-4 rounded" style={{ background: "var(--color-error-muted)" }}>
+                                        <h4 className="mb-2 font-medium" style={{ color: "var(--color-error)" }}>Error</h4>
+                                        <pre className="text-sm whitespace-pre-wrap" style={{ color: "var(--color-error)" }}>
+                                          {selectedExecutionDetails.error_message}
+                                        </pre>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <p className="text-error">Failed to load execution details</p>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     ))}
                   </tbody>
                 </table>

@@ -2,10 +2,10 @@
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import Link from "next/link";
-import { agentsAPI, Agent } from "@/lib/api";
+import { agentsAPI, AgentWithExecution } from "@/lib/api";
 
 export default function AgentsPage() {
-  const [agents, setAgents] = useState<Agent[]>([]);
+  const [agents, setAgents] = useState<AgentWithExecution[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -16,13 +16,27 @@ export default function AgentsPage() {
 
   async function loadAgents() {
     try {
-      const data = await agentsAPI.list();
+      const data = await agentsAPI.list(0, 100, true);
       setAgents(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load agents');
     } finally {
       setLoading(false);
     }
+  }
+
+  // Helper to format relative time
+  function formatRelativeTime(timestamp: string | null): string {
+    if (!timestamp) return "Never";
+    const now = new Date();
+    const then = new Date(timestamp);
+    const seconds = Math.floor((now.getTime() - then.getTime()) / 1000);
+
+    if (seconds < 60) return `${seconds}s ago`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+    return then.toLocaleDateString();
   }
 
   async function handleDelete(id: string) {
@@ -47,7 +61,7 @@ export default function AgentsPage() {
     }
   }
 
-  async function handleToggleStatus(agent: Agent) {
+  async function handleToggleStatus(agent: AgentWithExecution) {
     const newStatus = agent.status === 'active' ? 'paused' : 'active';
     try {
       await agentsAPI.update(agent.id, { status: newStatus });
@@ -136,12 +150,42 @@ export default function AgentsPage() {
                   {agent.schedule && <span>⏰ {agent.schedule}</span>}
                 </div>
 
+                {/* Last Execution Summary */}
+                {agent.last_execution && (
+                  <div className="mb-4 p-3 rounded" style={{ background: "var(--color-bg-tertiary)" }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>Last Run</span>
+                      <span className={`badge ${
+                        agent.last_execution.status === 'success' ? 'badge-success' :
+                        agent.last_execution.status === 'failed' ? 'badge-error' :
+                        agent.last_execution.status === 'running' ? 'badge-info' :
+                        'badge-neutral'
+                      }`}>
+                        {agent.last_execution.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm" style={{ color: "var(--color-text-muted)" }}>
+                      <span>{formatRelativeTime(agent.last_execution.completed_at || agent.last_execution.started_at)}</span>
+                      <span>•</span>
+                      <span>{(agent.last_execution.tokens_input + agent.last_execution.tokens_output).toLocaleString()} tokens</span>
+                    </div>
+                    {agent.last_execution.error_message && agent.last_execution.status === 'failed' && (
+                      <p className="text-xs mt-2 truncate" style={{ color: "var(--color-error)" }}>
+                        {agent.last_execution.error_message}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   <button onClick={() => handleRun(agent.id)} className="btn btn-primary btn-sm flex-1">
                     ▶️ Run Now
                   </button>
-                  <Link href={`/agents/${agent.id}`} className="btn btn-secondary btn-sm flex-1">
-                    ⚙️ Configure
+                  <Link href={`/agents/${agent.id}`} className="btn btn-secondary btn-sm">
+                    📊 View
+                  </Link>
+                  <Link href={`/agents/${agent.id}/edit`} className="btn btn-secondary btn-sm">
+                    ✏️ Edit
                   </Link>
                   <button
                     onClick={() => handleDelete(agent.id)}
