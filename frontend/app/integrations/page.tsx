@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
 import { integrationsAPI, Integration } from "@/lib/api";
 
@@ -134,6 +135,20 @@ export default function IntegrationsPage() {
       </div>
 
       <div className="container" style={{ padding: "var(--space-8)" }}>
+        <div className="card mb-6" style={{ border: "1px solid var(--color-accent)" }}>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="mb-2">MCP Server Control Plane</h3>
+              <p className="text-sm text-secondary" style={{ marginBottom: 0 }}>
+                Configure MCP server records and trigger restart/sync lifecycle actions.
+              </p>
+            </div>
+            <Link href="/integrations/mcp" className="btn btn-primary">
+              Open MCP Manager
+            </Link>
+          </div>
+        </div>
+
         {error && (
           <div className="card mb-6" style={{ background: "var(--color-error-muted)" }}>
             <p style={{ color: "var(--color-error)" }}>⚠️ {error}</p>
