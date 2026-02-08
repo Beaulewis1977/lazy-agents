@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import verify_api_key, redact_sensitive_data, redact_sensitive_string
+from app.core.security import redact_sensitive_data, redact_sensitive_string, verify_api_key
 from app.models.agent import Agent
 
 router = APIRouter(dependencies=[Depends(verify_api_key)])

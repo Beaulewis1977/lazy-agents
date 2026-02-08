@@ -120,9 +120,7 @@ def _is_secret_key_secure(secret_key: str) -> bool:
     candidate = secret_key.strip()
     if len(candidate) < _MIN_SECRET_KEY_LENGTH:
         return False
-    if candidate.lower() in _INSECURE_SECRET_KEY_VALUES:
-        return False
-    return True
+    return candidate.lower() not in _INSECURE_SECRET_KEY_VALUES
 
 
 def validate_startup_security_settings() -> None:

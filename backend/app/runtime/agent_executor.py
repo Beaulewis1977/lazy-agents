@@ -300,8 +300,12 @@ class AgentExecutor:
                         started_at=datetime.utcnow(),
                         completed_at=datetime.utcnow(),
                         input_data=redact_sensitive_data(tool_args),
-                        output_data=redact_sensitive_data({"result": skill_result.data}) if skill_result.success else None,
-                        error_message=redact_sensitive_string(skill_result.error) if skill_result.error else None,
+                        output_data=redact_sensitive_data({"result": skill_result.data})
+                        if skill_result.success
+                        else None,
+                        error_message=redact_sensitive_string(skill_result.error)
+                        if skill_result.error
+                        else None,
                     )
                     self.db.add(step)
 

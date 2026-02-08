@@ -8,10 +8,10 @@ from fastapi.testclient import TestClient
 
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./data/test-secret-redaction.db"
 
-from app.core.config import settings  # noqa: E402
-from app.core.database import get_db  # noqa: E402
-from app.core.security import REDACTED_VALUE, redact_sensitive_data  # noqa: E402
-from app.main import app  # noqa: E402
+from app.core.config import settings
+from app.core.database import get_db
+from app.core.security import REDACTED_VALUE, redact_sensitive_data
+from app.main import app
 
 
 @pytest.fixture

@@ -11,7 +11,7 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import verify_api_key, redact_sensitive_data, redact_sensitive_string
+from app.core.security import redact_sensitive_data, redact_sensitive_string, verify_api_key
 from app.models.execution import Execution, ExecutionStep
 
 router = APIRouter(dependencies=[Depends(verify_api_key)])
@@ -178,7 +178,9 @@ async def get_execution(
     response = ExecutionResponse.model_validate(execution)
     response.input_data = redact_sensitive_data(response.input_data)
     response.output_data = redact_sensitive_data(response.output_data)
-    response.error_message = redact_sensitive_string(response.error_message) if response.error_message else None
+    response.error_message = (
+        redact_sensitive_string(response.error_message) if response.error_message else None
+    )
     response.steps = []
     for step in steps:
         step_response = ExecutionStepResponse.model_validate(step)

@@ -7,9 +7,9 @@ from fastapi.testclient import TestClient
 
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./data/test-auth-fail-closed.db"
 
+from app.api import agents, executions, integrations, skills
 from app.core.config import settings
 from app.core.security import verify_api_key
-from app.api import agents, skills, integrations, executions
 from app.main import app
 
 
@@ -20,6 +20,7 @@ def restore_auth_settings():
         "APP_DEBUG": settings.APP_DEBUG,
         "API_KEY": settings.API_KEY,
         "SECRET_KEY": settings.SECRET_KEY,
+        "SECRET_KEY_SALT": settings.SECRET_KEY_SALT,
     }
     yield
     for key, value in snapshot.items():
@@ -63,8 +64,7 @@ def test_verify_api_key_accepts_valid_key_in_production(restore_auth_settings):
 def test_protected_routers_keep_verify_api_key_dependency():
     for router in [agents.router, skills.router, integrations.router, executions.router]:
         dependency_targets = [
-            getattr(dependency, "dependency", None)
-            for dependency in router.dependencies
+            getattr(dependency, "dependency", None) for dependency in router.dependencies
         ]
         assert verify_api_key in dependency_targets
 
@@ -73,7 +73,8 @@ def test_health_public_and_api_protected_in_production(restore_auth_settings):
     settings.APP_ENV = "production"
     settings.APP_DEBUG = False
     settings.API_KEY = "test-api-key"
-    settings.SECRET_KEY = "this-is-a-long-and-secure-secret-key-value-123"
+    settings.SECRET_KEY = "this-is-a-long-and-secure-secret-key-value-123"  # noqa: S105
+    settings.SECRET_KEY_SALT = b"production-salt-value-at-least-16-bytes"
 
     with TestClient(app) as client:
         health = client.get("/health")
