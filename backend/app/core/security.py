@@ -20,12 +20,13 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 def verify_api_key(api_key: str | None = Security(api_key_header)) -> bool:
     """Verify API key from header."""
-    if not settings.API_KEY:
-        if settings.is_development or settings.ALLOW_NO_API_KEY:
+    if settings.API_KEY is None:
+        if settings.is_development:
+            # Development mode can run without API auth.
             return True
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Server misconfiguration: API key not set",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API authentication not configured",
         )
 
     if api_key is None:
