@@ -5,32 +5,32 @@
 See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** Users can securely run and connect agents across all their tools from one place, with production-ready behavior on a self-hosted single-VM deployment.
-**Current focus:** Phase 1 - Security and Deployment Baseline
+**Current focus:** Phase 2 - MCP Server Control Plane
 
 ## Current Position
 
-Phase: 1 of 5 (Security and Deployment Baseline)
-Plan: 0 of 3 in current phase
-Status: Ready to plan
-Last activity: 2026-02-08 — Roadmap created and requirements mapped
+Phase: 2 of 5 (MCP Server Control Plane)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-08 — Completed 02-01-PLAN.md
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 17%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0.0 hours
+- Total plans completed: 1
+- Average duration: 5 min
+- Total execution time: 0.1 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 2 (MCP Server Control Plane) | 1 | 5 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: -
+- Last 5 plans: 5 min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -44,6 +44,8 @@ Recent decisions affecting current work:
 
 - Initialization: Keep existing stack and evolve in place
 - Initialization: v1 must include MCP implementation plus production-ready security baseline
+- 2026-02-08 (02-01): Store MCP env values encrypted at rest and only expose masked env metadata via API responses
+- 2026-02-08 (02-01): Enforce strict Pydantic validation for MCP args/env payload shape to keep 4xx errors actionable
 
 ### Pending Todos
 
@@ -53,9 +55,10 @@ None yet.
 
 - MCP auth/profile variation across third-party servers may require phase-specific validation.
 - Existing contract drift risks between frontend/backend require early test coverage.
+- Lifecycle manager implementation (02-02) depends on stable async MCP SDK session handling and error normalization.
 
 ## Session Continuity
 
-Last session: 2026-02-08 00:00
-Stopped at: Roadmap artifacts created and ready for phase planning
+Last session: 2026-02-08 12:17
+Stopped at: Completed 02-01-PLAN.md
 Resume file: None
