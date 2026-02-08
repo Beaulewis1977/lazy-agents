@@ -31,7 +31,7 @@ Progress: [███░░░░░░░] 33%
 
 **Recent Trend:**
 - Last 5 plans: 5 min, 3 min
-- Trend: Improving
+- Trend: Stable
 
 *Updated after each plan completion*
 
@@ -46,8 +46,8 @@ Recent decisions affecting current work:
 - Initialization: v1 must include MCP implementation plus production-ready security baseline
 - 2026-02-08 (02-01): Store MCP env values encrypted at rest and only expose masked env metadata via API responses
 - 2026-02-08 (02-01): Enforce strict Pydantic validation for MCP args/env payload shape to keep 4xx errors actionable
-- 2026-02-08 (02-02): Manage MCP runtimes through a FastAPI lifespan singleton (`app.state.mcp_manager`) for deterministic startup/shutdown behavior
-- 2026-02-08 (02-02): Persist deterministic `last_error` text (`MCP <action> failed: <ExceptionType>: <message>`) for operator-facing diagnostics
+- 2026-02-08 (02-02): Manage MCP runtimes via a FastAPI lifespan singleton (`app.state.mcp_manager`) for deterministic startup/shutdown ownership
+- 2026-02-08 (02-02): Persist deterministic `last_error` lifecycle text and surface it through list/get/restart/sync API contracts
 
 ### Pending Todos
 
@@ -56,11 +56,11 @@ None yet.
 ### Blockers/Concerns
 
 - MCP auth/profile variation across third-party servers may require phase-specific validation.
-- Existing contract drift risks between frontend/backend require early test coverage for restart/sync UX flows.
-- Lifecycle tests currently mock MCP sessions; real-process integration coverage is still needed in a later phase.
+- Existing contract drift risks between frontend/backend require early test coverage.
+- Frontend phase must ensure UI forms for args/env map cleanly to backend validation/error format.
 
 ## Session Continuity
 
-Last session: 2026-02-08 12:23
+Last session: 2026-02-08 12:24
 Stopped at: Completed 02-02-PLAN.md
 Resume file: None
