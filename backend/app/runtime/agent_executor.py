@@ -1,32 +1,36 @@
 import json
-import asyncio
+import logging
 import uuid
-from datetime import datetime
-from typing import Dict, Any, Optional, List
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.runtime.llm_client import get_llm_client, LLMMessage, LLMResponse
-from app.runtime.skill_executor import skill_executor_registry, SkillResult
+from app.core.security import decrypt_secret, redact_sensitive_data, redact_sensitive_string
 from app.models.agent import Agent
-from app.models.skill import Skill
-from app.models.integration import Integration
 from app.models.execution import Execution, ExecutionStep
-from app.core.security import decrypt_secret
+from app.models.integration import Integration
+from app.models.skill import Skill
+from app.runtime.llm_client import LLMMessage, LLMResponse, get_llm_client
+from app.runtime.skill_executor import SkillResult, skill_executor_registry
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
 class ExecutionContext:
     """Context for an agent execution."""
+
     execution_id: str
     agent: Agent
-    skills: List[Skill]
-    integrations: Dict[str, Integration]  # type -> integration
-    input_data: Dict[str, Any]
-    memory: List[Dict[str, Any]] = field(default_factory=list)
-    logs: List[str] = field(default_factory=list)
+    skills: list[Skill]
+    integrations: dict[str, Integration]  # type -> integration
+    input_data: dict[str, Any]
+    memory: list[dict[str, Any]] = field(default_factory=list)
+    logs: list[str] = field(default_factory=list)
 
     def log(self, message: str):
         timestamp = datetime.utcnow().isoformat()
@@ -40,9 +44,9 @@ class AgentExecutor:
 
     def __init__(self, db: AsyncSession):
         self.db = db
-        self._log_callbacks: List[callable] = []
+        self._log_callbacks: list[Callable[[dict[str, Any]], Awaitable[None]]] = []
 
-    def add_log_callback(self, callback: callable):
+    def add_log_callback(self, callback: Callable[[dict[str, Any]], Awaitable[None]]):
         """Add a callback for real-time log streaming."""
         self._log_callbacks.append(callback)
 
@@ -52,23 +56,25 @@ class AgentExecutor:
             "timestamp": datetime.utcnow().isoformat(),
             "execution_id": execution_id,
             "level": level,
-            "message": message,
+            "message": redact_sensitive_string(message),
             "source": source,
         }
         for callback in self._log_callbacks:
             try:
                 await callback(log_entry)
             except Exception:
-                pass
+                logger.debug("Log callback failed", exc_info=True)
 
     async def execute(
         self,
         agent_id: str,
-        input_data: Optional[Dict[str, Any]] = None,
+        input_data: dict[str, Any] | None = None,
         trigger: str = "manual",
-        api_keys: Optional[Dict[str, str]] = None,
+        api_keys: dict[str, str] | None = None,
     ) -> Execution:
         """Execute an agent and return the execution record."""
+        input_payload = input_data or {}
+        redacted_input_payload = redact_sensitive_data(input_payload)
 
         # Load agent
         result = await self.db.execute(select(Agent).where(Agent.id == agent_id))
@@ -84,12 +90,14 @@ class AgentExecutor:
             trigger=trigger,
             status="running",
             started_at=datetime.utcnow(),
-            input_data=input_data or {},
+            input_data=redacted_input_payload,
         )
         self.db.add(execution)
         await self.db.commit()
 
-        await self._emit_log(execution.id, "info", f"Starting execution of agent: {agent.name}", "system")
+        await self._emit_log(
+            execution.id, "info", f"Starting execution of agent: {agent.name}", "system"
+        )
 
         try:
             # Load agent's skills
@@ -104,7 +112,7 @@ class AgentExecutor:
                 agent=agent,
                 skills=skills,
                 integrations=integrations,
-                input_data=input_data or {},
+                input_data=input_payload,
             )
 
             # Run the agent loop
@@ -113,18 +121,22 @@ class AgentExecutor:
             # Update execution record
             execution.status = "success"
             execution.completed_at = datetime.utcnow()
-            execution.output_data = result
-            execution.tokens_input = context.memory[-1].get("tokens_input", 0) if context.memory else 0
-            execution.tokens_output = context.memory[-1].get("tokens_output", 0) if context.memory else 0
+            execution.output_data = redact_sensitive_data(result)
+            execution.tokens_input = (
+                context.memory[-1].get("tokens_input", 0) if context.memory else 0
+            )
+            execution.tokens_output = (
+                context.memory[-1].get("tokens_output", 0) if context.memory else 0
+            )
 
             await self._emit_log(execution.id, "info", "Execution completed successfully", "system")
 
         except Exception as e:
             execution.status = "failed"
             execution.completed_at = datetime.utcnow()
-            execution.error_message = str(e)
+            execution.error_message = redact_sensitive_string(str(e))
 
-            await self._emit_log(execution.id, "error", f"Execution failed: {str(e)}", "system")
+            await self._emit_log(execution.id, "error", f"Execution failed: {e!s}", "system")
 
         # Update agent stats
         agent.last_run_at = datetime.utcnow()
@@ -137,7 +149,7 @@ class AgentExecutor:
 
         return execution
 
-    async def _load_skills(self, skill_ids: List[str]) -> List[Skill]:
+    async def _load_skills(self, skill_ids: list[str]) -> list[Skill]:
         """Load skills by ID."""
         if not skill_ids:
             return []
@@ -145,18 +157,20 @@ class AgentExecutor:
         result = await self.db.execute(select(Skill).where(Skill.id.in_(skill_ids)))
         return list(result.scalars().all())
 
-    async def _load_integrations(self, integration_ids: List[str]) -> Dict[str, Integration]:
+    async def _load_integrations(self, integration_ids: list[str]) -> dict[str, Integration]:
         """Load integrations by ID, mapped by type."""
         if not integration_ids:
             return {}
 
-        result = await self.db.execute(select(Integration).where(Integration.id.in_(integration_ids)))
+        result = await self.db.execute(
+            select(Integration).where(Integration.id.in_(integration_ids))
+        )
         integrations = {}
         for integration in result.scalars().all():
             integrations[integration.type] = integration
         return integrations
 
-    def _get_integration_credentials(self, integration: Integration) -> Dict[str, str]:
+    def _get_integration_credentials(self, integration: Integration) -> dict[str, str]:
         """Decrypt credentials from an integration."""
         if not integration.credentials_encrypted:
             return {}
@@ -169,8 +183,8 @@ class AgentExecutor:
     async def _run_agent_loop(
         self,
         context: ExecutionContext,
-        api_keys: Dict[str, str],
-    ) -> Dict[str, Any]:
+        api_keys: dict[str, str],
+    ) -> dict[str, Any]:
         """Run the main agent loop with tool calling."""
 
         agent = context.agent
@@ -197,9 +211,14 @@ class AgentExecutor:
                 api_key = creds.get("api_key")
 
         # Fallback for old "o1" or similar if needed
-        if not api_key and "openai" in context.integrations and not model.startswith("claude-") and not model.startswith("gemini-"):
-             creds = self._get_integration_credentials(context.integrations["openai"])
-             api_key = creds.get("api_key")
+        if (
+            not api_key
+            and "openai" in context.integrations
+            and not model.startswith("claude-")
+            and not model.startswith("gemini-")
+        ):
+            creds = self._get_integration_credentials(context.integrations["openai"])
+            api_key = creds.get("api_key")
 
         llm = get_llm_client(model, api_key)
 
@@ -218,7 +237,9 @@ class AgentExecutor:
         user_message = self._format_user_input(context.input_data)
         messages.append(LLMMessage(role="user", content=user_message))
 
-        await self._emit_log(context.execution_id, "info", f"User input: {user_message[:200]}...", "agent")
+        await self._emit_log(
+            context.execution_id, "info", f"User input: {user_message[:200]}...", "agent"
+        )
 
         # Run the loop
         total_tokens_input = 0
@@ -249,7 +270,9 @@ class AgentExecutor:
                 if not tool_calls:
                     # No more tool calls, we're done
                     final_response = response.content
-                    await self._emit_log(context.execution_id, "info", f"Final response generated", "agent")
+                    await self._emit_log(
+                        context.execution_id, "info", "Final response generated", "agent"
+                    )
                     break
 
                 # Execute tool calls
@@ -260,15 +283,11 @@ class AgentExecutor:
                     tool_args = tool_call["arguments"]
 
                     await self._emit_log(
-                        context.execution_id, "info",
-                        f"Calling skill: {tool_name}",
-                        "skill"
+                        context.execution_id, "info", f"Calling skill: {tool_name}", "skill"
                     )
 
                     # Execute the skill
-                    skill_result = await self._execute_skill(
-                        context, tool_name, tool_args
-                    )
+                    skill_result = await self._execute_skill(context, tool_name, tool_args)
 
                     # Record step
                     step = ExecutionStep(
@@ -280,35 +299,48 @@ class AgentExecutor:
                         status="success" if skill_result.success else "failed",
                         started_at=datetime.utcnow(),
                         completed_at=datetime.utcnow(),
-                        input_data=tool_args,
-                        output_data={"result": skill_result.data} if skill_result.success else None,
-                        error_message=skill_result.error,
+                        input_data=redact_sensitive_data(tool_args),
+                        output_data=redact_sensitive_data({"result": skill_result.data})
+                        if skill_result.success
+                        else None,
+                        error_message=redact_sensitive_string(skill_result.error)
+                        if skill_result.error
+                        else None,
                     )
                     self.db.add(step)
 
                     # Add tool response to conversation
-                    tool_response = json.dumps(skill_result.data) if skill_result.success else f"Error: {skill_result.error}"
-                    messages.append(LLMMessage(
-                        role="user",
-                        content=f"Tool '{tool_name}' result:\n{tool_response}"
-                    ))
+                    tool_response = (
+                        json.dumps(skill_result.data)
+                        if skill_result.success
+                        else f"Error: {skill_result.error}"
+                    )
+                    messages.append(
+                        LLMMessage(
+                            role="user", content=f"Tool '{tool_name}' result:\n{tool_response}"
+                        )
+                    )
 
                     await self._emit_log(
                         context.execution_id,
                         "info" if skill_result.success else "warn",
                         f"Skill {tool_name} {'completed' if skill_result.success else 'failed'}",
-                        "skill"
+                        "skill",
                     )
             except Exception as e:
-                await self._emit_log(context.execution_id, "error", f"Error in loop: {str(e)}", "agent")
-                raise e
+                await self._emit_log(
+                    context.execution_id, "error", f"Error in loop: {e!s}", "agent"
+                )
+                raise
 
         # Store execution metadata
-        context.memory.append({
-            "tokens_input": total_tokens_input,
-            "tokens_output": total_tokens_output,
-            "iterations": iteration,
-        })
+        context.memory.append(
+            {
+                "tokens_input": total_tokens_input,
+                "tokens_output": total_tokens_output,
+                "iterations": iteration,
+            }
+        )
 
         return {
             "response": final_response,
@@ -347,7 +379,7 @@ class AgentExecutor:
 
         return "\n".join(prompt_parts)
 
-    def _build_tool_definitions(self, skills: List[Skill]) -> List[Dict[str, Any]]:
+    def _build_tool_definitions(self, skills: list[Skill]) -> list[dict[str, Any]]:
         """Build OpenAI-style tool definitions from skills."""
         tools = []
 
@@ -370,22 +402,24 @@ class AgentExecutor:
 
                 properties[param_name] = prop
 
-            tools.append({
-                "type": "function",
-                "function": {
-                    "name": skill.id,
-                    "description": skill.description or skill.name,
-                    "parameters": {
-                        "type": "object",
-                        "properties": properties,
-                        "required": required,
+            tools.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": skill.id,
+                        "description": skill.description or skill.name,
+                        "parameters": {
+                            "type": "object",
+                            "properties": properties,
+                            "required": required,
+                        },
                     },
-                },
-            })
+                }
+            )
 
         return tools
 
-    def _format_user_input(self, input_data: Dict[str, Any]) -> str:
+    def _format_user_input(self, input_data: dict[str, Any]) -> str:
         """Format user input for the conversation."""
         if not input_data:
             return "Please proceed with your task."
@@ -398,33 +432,66 @@ class AgentExecutor:
 
         return json.dumps(input_data, indent=2)
 
-    def _extract_tool_calls(self, response: LLMResponse) -> List[Dict[str, Any]]:
+    def _extract_tool_calls(self, response: LLMResponse) -> list[dict[str, Any]]:
         """Extract tool calls from LLM response."""
         raw = response.raw_response
 
         # OpenAI format
-        if "choices" in raw and raw["choices"]:
+        if raw.get("choices"):
             choice = raw["choices"][0]
             message = choice.get("message", {})
             tool_calls = message.get("tool_calls", [])
 
             if tool_calls:
-                return [{
-                    "id": tc.get("id", ""),
-                    "name": tc["function"]["name"],
-                    "arguments": json.loads(tc["function"]["arguments"]),
-                } for tc in tool_calls]
+                parsed_tool_calls = []
+                for tc in tool_calls:
+                    function_data = tc.get("function", {})
+                    raw_arguments = function_data.get("arguments", "{}")
+                    parsed_arguments: dict[str, Any]
+                    try:
+                        decoded_arguments = (
+                            json.loads(raw_arguments)
+                            if isinstance(raw_arguments, str)
+                            else raw_arguments
+                        )
+                        if isinstance(decoded_arguments, dict):
+                            parsed_arguments = decoded_arguments
+                        else:
+                            parsed_arguments = {"value": decoded_arguments}
+                    except json.JSONDecodeError:
+                        logger.warning(
+                            "Malformed tool call arguments JSON",
+                            extra={
+                                "tool_call_id": tc.get("id", ""),
+                                "tool_name": function_data.get("name", ""),
+                            },
+                        )
+                        parsed_arguments = {"raw": str(raw_arguments)}
+                    except Exception:
+                        logger.exception("Unexpected error while parsing tool call arguments")
+                        parsed_arguments = {}
+
+                    parsed_tool_calls.append(
+                        {
+                            "id": tc.get("id", ""),
+                            "name": function_data.get("name", ""),
+                            "arguments": parsed_arguments,
+                        }
+                    )
+                return parsed_tool_calls
 
         # Anthropic format
         if "content" in raw and isinstance(raw["content"], list):
             tool_calls = []
             for block in raw.get("content", []):
                 if block.get("type") == "tool_use":
-                    tool_calls.append({
-                        "id": block.get("id", ""),
-                        "name": block["name"],
-                        "arguments": block["input"],
-                    })
+                    tool_calls.append(
+                        {
+                            "id": block.get("id", ""),
+                            "name": block["name"],
+                            "arguments": block["input"],
+                        }
+                    )
             return tool_calls
 
         return []
@@ -433,7 +500,7 @@ class AgentExecutor:
         self,
         context: ExecutionContext,
         skill_id: str,
-        params: Dict[str, Any],
+        params: dict[str, Any],
     ) -> SkillResult:
         """Execute a skill with the given parameters."""
 
@@ -446,14 +513,14 @@ class AgentExecutor:
         # Try to find matching integration
         integration = None
         if prefix in context.integrations:
-             integration = context.integrations[prefix]
+            integration = context.integrations[prefix]
         else:
-             # Look for skill in context to see if it has 'integration' field (mapped to category in some places?)
-             # In Skill model we don't have explicit 'integration' field, but we have 'integration_required' string
-             # Find the skill object
-             skill = next((s for s in context.skills if s.id == skill_id), None)
-             if skill and skill.integration_required:
-                 integration = context.integrations.get(skill.integration_required)
+            # Look for skill in context to see if it has 'integration' field (mapped to category in some places?)
+            # In Skill model we don't have explicit 'integration' field, but we have 'integration_required' string
+            # Find the skill object
+            skill = next((s for s in context.skills if s.id == skill_id), None)
+            if skill and skill.integration_required:
+                integration = context.integrations.get(skill.integration_required)
 
         credentials = self._get_integration_credentials(integration) if integration else {}
 

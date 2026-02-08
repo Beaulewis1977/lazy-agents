@@ -2,13 +2,13 @@
 WebSocket endpoints for real-time communication.
 """
 
-import asyncio
-import json
-from typing import Dict, Set, List
-from datetime import datetime
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
-from dataclasses import dataclass, asdict
 import logging
+from dataclasses import asdict, dataclass
+from datetime import datetime
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
+from app.core.security import redact_sensitive_string
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +18,7 @@ router = APIRouter()
 @dataclass
 class LogEntry:
     """A log entry to broadcast."""
+
     timestamp: str
     level: str
     message: str
@@ -30,11 +31,11 @@ class ConnectionManager:
 
     def __init__(self):
         # All log subscribers
-        self.log_subscribers: Set[WebSocket] = set()
+        self.log_subscribers: set[WebSocket] = set()
         # Execution-specific subscribers: execution_id -> set of websockets
-        self.execution_subscribers: Dict[str, Set[WebSocket]] = {}
+        self.execution_subscribers: dict[str, set[WebSocket]] = {}
         # Log buffer for new subscribers
-        self.log_buffer: List[LogEntry] = []
+        self.log_buffer: list[LogEntry] = []
         self.max_buffer_size = 100
 
     async def connect_logs(self, websocket: WebSocket):
@@ -47,7 +48,7 @@ class ConnectionManager:
             try:
                 await websocket.send_json(asdict(log))
             except Exception:
-                pass
+                logging.debug("Failed to send buffered log to websocket")
 
     async def connect_execution(self, websocket: WebSocket, execution_id: str):
         """Connect a client to a specific execution's log stream."""
@@ -73,7 +74,7 @@ class ConnectionManager:
         # Add to buffer
         self.log_buffer.append(log)
         if len(self.log_buffer) > self.max_buffer_size:
-            self.log_buffer = self.log_buffer[-self.max_buffer_size:]
+            self.log_buffer = self.log_buffer[-self.max_buffer_size :]
 
         log_dict = asdict(log)
 
@@ -99,6 +100,8 @@ class ConnectionManager:
 
             for ws in disconnected:
                 self.execution_subscribers[log.execution_id].discard(ws)
+            if not self.execution_subscribers[log.execution_id]:
+                del self.execution_subscribers[log.execution_id]
 
     async def emit_log(
         self,
@@ -111,7 +114,7 @@ class ConnectionManager:
         log = LogEntry(
             timestamp=datetime.utcnow().isoformat(),
             level=level,
-            message=message,
+            message=redact_sensitive_string(message),
             source=source,
             execution_id=execution_id,
         )

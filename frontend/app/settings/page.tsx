@@ -11,6 +11,20 @@ interface Settings {
   api_key: string;
 }
 
+const SETTINGS_STORAGE_KEY = "lazyagents_settings";
+const REDACTED_VALUE = "***REDACTED***";
+const DEFAULT_SETTINGS: Settings = {
+  openai_key: "",
+  anthropic_key: "",
+  google_key: "",
+  default_model: "gpt-4o-mini",
+  api_key: "",
+};
+
+interface PersistedSettings {
+  default_model: string;
+}
+
 const MODELS = [
   { id: "gpt-4o-mini", name: "GPT-4o Mini (OpenAI)" },
   { id: "gpt-4o", name: "GPT-4o (OpenAI)" },
@@ -19,38 +33,57 @@ const MODELS = [
   { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro (Google)" },
 ];
 
-function getInitialSettings(): Settings {
-  const defaults: Settings = {
-    openai_key: "",
-    anthropic_key: "",
-    google_key: "",
-    default_model: "gpt-4o-mini",
-    api_key: "",
-  };
-
-  if (typeof window === "undefined") {
-    return defaults;
-  }
-
-  const savedSettings = window.localStorage.getItem("lazyagents_settings");
-  if (!savedSettings) {
-    return defaults;
-  }
-
-  try {
-    const parsed = JSON.parse(savedSettings) as Partial<Settings>;
-    return { ...defaults, ...parsed };
-  } catch {
-    return defaults;
-  }
-}
-
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<Settings>(getInitialSettings);
+  const [settings, setSettings] = useState<Settings>(() => {
+    if (typeof window === "undefined") {
+      return { ...DEFAULT_SETTINGS };
+    }
+
+    const persisted = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!persisted) {
+      return { ...DEFAULT_SETTINGS };
+    }
+
+    try {
+      const parsed = JSON.parse(persisted) as Partial<Settings>;
+      if (
+        typeof parsed.openai_key === "string" ||
+        typeof parsed.anthropic_key === "string" ||
+        typeof parsed.google_key === "string" ||
+        typeof parsed.api_key === "string"
+      ) {
+        localStorage.removeItem(SETTINGS_STORAGE_KEY);
+        return { ...DEFAULT_SETTINGS };
+      }
+      if (typeof parsed.default_model === "string") {
+        return { ...DEFAULT_SETTINGS, default_model: parsed.default_model };
+      }
+    } catch {
+      localStorage.removeItem(SETTINGS_STORAGE_KEY);
+    }
+
+    return { ...DEFAULT_SETTINGS };
+  });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [health, setHealth] = useState<{ status: string; version: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function getPersistedSettings(next: Settings): PersistedSettings {
+    return {
+      default_model: next.default_model,
+    };
+  }
+
+  function redactForExport(next: Settings): Settings {
+    return {
+      ...next,
+      openai_key: next.openai_key ? REDACTED_VALUE : "",
+      anthropic_key: next.anthropic_key ? REDACTED_VALUE : "",
+      google_key: next.google_key ? REDACTED_VALUE : "",
+      api_key: next.api_key ? REDACTED_VALUE : "",
+    };
+  }
 
   useEffect(() => {
     // Check health
@@ -63,8 +96,11 @@ export default function SettingsPage() {
     setSaving(true);
     setSaved(false);
 
-    // Save to localStorage
-    localStorage.setItem('lazyagents_settings', JSON.stringify(settings));
+    // Persist only non-sensitive settings.
+    localStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify(getPersistedSettings(settings))
+    );
 
     // In a real app, you'd also save to the backend
     setTimeout(() => {
@@ -125,7 +161,7 @@ export default function SettingsPage() {
         <div className="card mb-6">
           <h3 className="mb-4">LLM Providers</h3>
           <p className="text-sm text-secondary mb-6">
-            Configure your API keys for AI providers. Keys are stored locally and sent to the backend for agent execution.
+            Configure API keys for this session. Secret values stay masked and are not persisted in browser storage.
           </p>
           <div className="flex flex-col gap-4">
             <div className="input-group">
@@ -209,7 +245,11 @@ export default function SettingsPage() {
             <button
               onClick={() => {
                 if (confirm('Export all your data as JSON?')) {
-                  const data = { settings, exportedAt: new Date().toISOString() };
+                  const data = {
+                    settings: redactForExport(settings),
+                    preferences: getPersistedSettings(settings),
+                    exportedAt: new Date().toISOString(),
+                  };
                   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
@@ -225,14 +265,8 @@ export default function SettingsPage() {
             <button
               onClick={() => {
                 if (confirm('Clear all local settings? This cannot be undone.')) {
-                  localStorage.removeItem('lazyagents_settings');
-                  setSettings({
-                    openai_key: "",
-                    anthropic_key: "",
-                    google_key: "",
-                    default_model: "gpt-4o-mini",
-                    api_key: "",
-                  });
+                  localStorage.removeItem(SETTINGS_STORAGE_KEY);
+                  setSettings({ ...DEFAULT_SETTINGS });
                 }
               }}
               className="btn btn-ghost"

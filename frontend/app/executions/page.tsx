@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { executionsAPI, agentsAPI, Execution, Agent } from "@/lib/api";
 
@@ -30,13 +30,13 @@ export default function ExecutionsPage() {
   }, [agentFilter, statusFilter]);
 
   useEffect(() => {
-    void loadData();
+    loadData();
   }, [loadData]);
 
   async function handleCancel(id: string) {
     try {
       await executionsAPI.cancel(id);
-      await loadData();
+      loadData();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to cancel execution');
     }

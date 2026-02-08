@@ -3,11 +3,11 @@ Database configuration and session management.
 """
 
 from pathlib import Path
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import settings
-
 
 # Create async engine
 engine = create_async_engine(
@@ -26,6 +26,7 @@ async_session = async_sessionmaker(
 
 class Base(DeclarativeBase):
     """Base class for all database models."""
+
     pass
 
 
@@ -37,7 +38,7 @@ async def init_db():
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
 
     # Import models to register them with Base
-    from app.models import agent, skill, integration, execution, mcp_server  # noqa: F401
+    from app.models import agent, execution, integration, mcp_server, skill  # noqa: F401
 
     # Create all tables
     async with engine.begin() as conn:

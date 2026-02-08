@@ -1,0 +1,28 @@
+title = "LazyAgents Gitleaks Config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+paths = [
+    '''.gitleaks.toml''',
+    '''^tests/.*''',
+    '''.*\.test\.(js|ts|py)$''',
+    '''.*_test\.py$''',
+    '''.*\.example''',
+    '''\.env\.example''',
+    '''^.*fixtures/.*''',
+    '''^.*mocks/.*''',
+    '''.*\.mock\.(js|ts)$''',
+]
+regexes = [
+    '''EXAMPLE_.*''',
+    '''YOUR[_-]API[_-]KEY''',
+    '''sk-your-.*''',
+    '''change-me-.*''',
+    '''la-your-.*''',
+    '''ghp_your_.*''',
+    '''your_.*_token''',
+    '''xoxb-your-.*''',
+    '''secret_your_.*''',
+]

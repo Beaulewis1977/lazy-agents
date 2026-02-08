@@ -2,9 +2,9 @@
 Application configuration using Pydantic Settings.
 """
 
-import os
 from pathlib import Path
-from typing import List, Optional
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load .env from the backend directory
@@ -32,34 +32,36 @@ class Settings(BaseSettings):
     API_PORT: int = 8000
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./data/lazy-agents.db"
 
     # Security
     SECRET_KEY: str = "change-me-in-production-please"
-    API_KEY: Optional[str] = None
+    SECRET_KEY_SALT: bytes = b"change-me-salt-in-production"
+    API_KEY: str | None = None
+    ALLOW_NO_API_KEY: bool = False
 
     # LLM Providers
-    OPENAI_API_KEY: Optional[str] = None
-    ANTHROPIC_API_KEY: Optional[str] = None
-    GOOGLE_API_KEY: Optional[str] = None
-    OPENROUTER_API_KEY: Optional[str] = None
-    OLLAMA_BASE_URL: Optional[str] = None
+    OPENAI_API_KEY: str | None = None
+    ANTHROPIC_API_KEY: str | None = None
+    GOOGLE_API_KEY: str | None = None
+    OPENROUTER_API_KEY: str | None = None
+    OLLAMA_BASE_URL: str | None = None
 
     # Default model
     DEFAULT_MODEL: str = "gpt-4o-mini"
 
     # Integrations
-    GITHUB_TOKEN: Optional[str] = None
-    DISCORD_BOT_TOKEN: Optional[str] = None
-    SLACK_BOT_TOKEN: Optional[str] = None
-    SLACK_SIGNING_SECRET: Optional[str] = None
-    NOTION_API_KEY: Optional[str] = None
+    GITHUB_TOKEN: str | None = None
+    DISCORD_BOT_TOKEN: str | None = None
+    SLACK_BOT_TOKEN: str | None = None
+    SLACK_SIGNING_SECRET: str | None = None
+    NOTION_API_KEY: str | None = None
 
     # Redis (optional)
-    REDIS_URL: Optional[str] = None
+    REDIS_URL: str | None = None
 
     # Agent execution
     MAX_AGENT_EXECUTION_TIME: int = 300  # seconds
@@ -70,8 +72,22 @@ class Settings(BaseSettings):
         """Check if running in development mode."""
         return self.APP_ENV == "development"
 
+    @field_validator("SECRET_KEY_SALT", mode="before")
+    @classmethod
+    def _validate_secret_key_salt(cls, value: str | bytes) -> bytes:
+        """Ensure SECRET_KEY_SALT is loaded as bytes with minimum entropy length."""
+        salt = value if isinstance(value, bytes) else value.encode("utf-8")
+        if len(salt) < 16:
+            raise ValueError("SECRET_KEY_SALT must be at least 16 bytes")
+        return salt
+
     @property
-    def available_providers(self) -> List[str]:
+    def is_production_like(self) -> bool:
+        """Check if runtime should enforce production security posture."""
+        return not self.is_development
+
+    @property
+    def available_providers(self) -> list[str]:
         """Get list of configured LLM providers."""
         providers = []
         if self.OPENAI_API_KEY:
@@ -89,3 +105,37 @@ class Settings(BaseSettings):
 
 # Create global settings instance
 settings = Settings()
+
+_INSECURE_SECRET_KEY_VALUES = {
+    "",
+    "change-me-in-production-please",
+    "change_me",
+    "changeme",
+    "secret",
+    "default",
+}
+_MIN_SECRET_KEY_LENGTH = 32
+
+
+def _is_secret_key_secure(secret_key: str) -> bool:
+    candidate = secret_key.strip()
+    if len(candidate) < _MIN_SECRET_KEY_LENGTH:
+        return False
+    return candidate.lower() not in _INSECURE_SECRET_KEY_VALUES
+
+
+def validate_startup_security_settings() -> None:
+    """Fail fast on insecure settings outside development mode."""
+    if settings.is_development:
+        return
+
+    if settings.APP_DEBUG:
+        raise ValueError("APP_DEBUG must be false outside development mode")
+
+    if not settings.API_KEY or not settings.API_KEY.strip():
+        raise ValueError("API_KEY must be set outside development mode")
+
+    if not _is_secret_key_secure(settings.SECRET_KEY):
+        raise ValueError(
+            f"SECRET_KEY must be at least {_MIN_SECRET_KEY_LENGTH} chars and non-default outside development mode"
+        )

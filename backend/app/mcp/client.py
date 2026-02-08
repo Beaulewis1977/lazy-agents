@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 
 class MCPClientError(RuntimeError):
@@ -21,9 +21,9 @@ class MCPRuntimeHandle:
 
 async def start_runtime_session(
     command: str,
-    args: List[str],
-    env: Dict[str, str],
-) -> Tuple[MCPRuntimeHandle, List[Dict[str, Any]]]:
+    args: list[str],
+    env: dict[str, str],
+) -> tuple[MCPRuntimeHandle, list[dict[str, Any]]]:
     """Start an MCP stdio client/session and return discovered tools."""
 
     StdioServerParameters, stdio_client, ClientSession = _load_mcp_sdk()
@@ -36,12 +36,8 @@ async def start_runtime_session(
             env=env or None,
         )
 
-        read_stream, write_stream = await exit_stack.enter_async_context(
-            stdio_client(parameters)
-        )
-        session = await exit_stack.enter_async_context(
-            ClientSession(read_stream, write_stream)
-        )
+        read_stream, write_stream = await exit_stack.enter_async_context(stdio_client(parameters))
+        session = await exit_stack.enter_async_context(ClientSession(read_stream, write_stream))
         await session.initialize()
 
         tools = await list_tools(session)
@@ -51,7 +47,7 @@ async def start_runtime_session(
         raise MCPClientError(f"Failed to start MCP runtime session: {exc}") from exc
 
 
-async def list_tools(session: Any) -> List[Dict[str, Any]]:
+async def list_tools(session: Any) -> list[dict[str, Any]]:
     """Return normalized tool payloads from ClientSession.list_tools."""
 
     try:
@@ -60,7 +56,7 @@ async def list_tools(session: Any) -> List[Dict[str, Any]]:
     except Exception as exc:  # pragma: no cover - exercised via manager tests
         raise MCPClientError(f"Failed to list MCP tools: {exc}") from exc
 
-    normalized: List[Dict[str, Any]] = []
+    normalized: list[dict[str, Any]] = []
     for tool in raw_tools or []:
         if hasattr(tool, "model_dump"):
             normalized.append(tool.model_dump())
@@ -80,7 +76,7 @@ async def list_tools(session: Any) -> List[Dict[str, Any]]:
     return normalized
 
 
-async def call_tool(session: Any, tool_name: str, arguments: Dict[str, Any]) -> Any:
+async def call_tool(session: Any, tool_name: str, arguments: dict[str, Any]) -> Any:
     """Call a single tool on an initialized MCP session."""
 
     try:
@@ -95,7 +91,7 @@ async def close_runtime_session(handle: MCPRuntimeHandle) -> None:
     await handle.exit_stack.aclose()
 
 
-def _load_mcp_sdk() -> Tuple[Any, Any, Any]:
+def _load_mcp_sdk() -> tuple[Any, Any, Any]:
     """Import MCP SDK objects lazily so tests can run without mcp installed."""
 
     try:

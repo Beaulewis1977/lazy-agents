@@ -4,8 +4,9 @@ Integration database model.
 
 import uuid
 from datetime import datetime
-from typing import Optional, Dict, Any, List
-from sqlalchemy import String, Text, DateTime, JSON
+from typing import Any
+
+from sqlalchemy import JSON, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -32,13 +33,13 @@ class Integration(Base):
     status: Mapped[str] = mapped_column(String(50), default="connected")
 
     # Encrypted credentials (stored as encrypted JSON)
-    credentials_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    credentials_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Permissions/scopes
-    permissions: Mapped[List[str]] = mapped_column(JSON, default=list)
+    permissions: Mapped[list[str]] = mapped_column(JSON, default=list)
 
     # Configuration (non-sensitive settings)
-    config: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
+    config: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
     # Metadata
     created_at: Mapped[datetime] = mapped_column(
@@ -50,7 +51,7 @@ class Integration(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
     )
-    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     def __repr__(self) -> str:
         return f"<Integration(id={self.id}, type={self.type}, name={self.name})>"

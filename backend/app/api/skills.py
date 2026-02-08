@@ -2,7 +2,9 @@
 Skills API endpoints.
 """
 
-from typing import List, Optional, Dict, Any
+from pathlib import Path
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -19,14 +21,16 @@ router = APIRouter(dependencies=[Depends(verify_api_key)])
 # Schemas
 # =============================================================================
 
+
 class SkillResponse(BaseModel):
     """Schema for skill response."""
+
     id: str
     name: str
-    description: Optional[str]
+    description: str | None
     category: str
-    parameters: Dict[str, Any]
-    integration_required: Optional[str]
+    parameters: dict[str, Any]
+    integration_required: str | None
     is_builtin: bool
 
     class Config:
@@ -35,13 +39,24 @@ class SkillResponse(BaseModel):
 
 class SkillCreate(BaseModel):
     """Schema for creating a custom skill."""
+
     id: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     category: str = "custom"
-    parameters: Dict[str, Any] = {}
-    integration_required: Optional[str] = None
+    parameters: dict[str, Any] = {}
+    integration_required: str | None = None
     implementation: str
+
+
+class SkillUpdate(BaseModel):
+    """Schema for updating a custom skill."""
+
+    name: str | None = None
+    description: str | None = None
+    category: str | None = None
+    parameters: dict[str, Any] | None = None
+    implementation: str | None = None
 
 
 # =============================================================================
@@ -94,7 +109,11 @@ BUILTIN_SKILLS = [
         "category": "http",
         "parameters": {
             "url": {"type": "string", "description": "URL to request"},
-            "method": {"type": "string", "enum": ["GET", "POST", "PUT", "DELETE"], "default": "GET"},
+            "method": {
+                "type": "string",
+                "enum": ["GET", "POST", "PUT", "DELETE"],
+                "default": "GET",
+            },
             "headers": {"type": "object", "default": {}},
             "body": {"type": "object", "default": None},
         },
@@ -126,14 +145,32 @@ BUILTIN_SKILLS = [
     },
 ]
 
+ALLOWED_SKILL_BASE_PATHS = [
+    "~/.lazyagents/skills",
+    "~/.codex/skills",
+    "./skills",
+    "./data/skills",
+]
+
+
+def _is_path_within_allowed_bases(path: str) -> bool:
+    """Check if a user-supplied path is under an allowed skills directory."""
+    resolved = Path(path).expanduser().resolve()
+    for base in ALLOWED_SKILL_BASE_PATHS:
+        base_path = Path(base).expanduser().resolve()
+        if resolved == base_path or base_path in resolved.parents:
+            return True
+    return False
+
 
 # =============================================================================
 # Endpoints
 # =============================================================================
 
-@router.get("", response_model=List[SkillResponse])
+
+@router.get("", response_model=list[SkillResponse])
 async def list_skills(
-    category: Optional[str] = None,
+    category: str | None = None,
     include_builtin: bool = True,
     db: AsyncSession = Depends(get_db),
 ):
@@ -210,7 +247,7 @@ async def create_skill(
 @router.patch("/{skill_id}", response_model=SkillResponse)
 async def update_skill(
     skill_id: str,
-    updates: Dict[str, Any],
+    updates: SkillUpdate,
     db: AsyncSession = Depends(get_db),
 ):
     """Update a custom skill."""
@@ -232,10 +269,8 @@ async def update_skill(
         )
 
     # Update fields
-    allowed_fields = ["name", "description", "category", "parameters", "implementation"]
-    for field, value in updates.items():
-        if field in allowed_fields:
-            setattr(skill, field, value)
+    for field, value in updates.model_dump(exclude_unset=True).items():
+        setattr(skill, field, value)
 
     await db.commit()
     await db.refresh(skill)
@@ -299,6 +334,7 @@ async def get_skill_config(
 
     # Parse implementation if it's JSON
     import json
+
     implementation_data = {}
     if skill.implementation:
         try:
@@ -318,7 +354,7 @@ async def get_skill_config(
         "implementation": implementation_data.get("instructions"),
         "templates": implementation_data.get("templates", {}),
         "references": implementation_data.get("references", []),
-        "source_path": skill.source_path if hasattr(skill, 'source_path') else None,
+        "source_path": skill.source_path if hasattr(skill, "source_path") else None,
     }
 
 
@@ -329,6 +365,12 @@ async def load_skill_from_path(
 ):
     """Load a skill from a filesystem path (MD file or folder with SKILL.md)."""
     from app.runtime.skill_loader import SkillLoader
+
+    if not _is_path_within_allowed_bases(path):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Path must be inside an allowed skills directory",
+        )
 
     loader = SkillLoader()
     loaded_skill = loader.load_skill_from_path(path)
@@ -376,6 +418,12 @@ async def scan_directory_for_skills(
 ):
     """Scan a directory for skill files and load them all."""
     from app.runtime.skill_loader import SkillLoader
+
+    if not _is_path_within_allowed_bases(directory):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Directory must be inside an allowed skills directory",
+        )
 
     loader = SkillLoader(skill_dirs=[directory])
     loaded_skills = loader.load_all_skills()
@@ -427,4 +475,4 @@ async def list_skill_categories(
         if row:
             categories.add(row)
 
-    return sorted(list(categories))
+    return sorted(categories)

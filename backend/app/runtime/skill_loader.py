@@ -5,39 +5,44 @@ Supports loading skills from:
 - Skill folders containing SKILL.md + templates, assets, references
 """
 
-import os
-import re
-import yaml
 import json
-from pathlib import Path
-from typing import List, Dict, Any, Optional
+import logging
+import re
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, ClassVar
+
+import yaml
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
 class SkillParameter:
     """A parameter for a skill."""
+
     name: str
     type: str
     description: str
     required: bool = True
     default: Any = None
-    enum: Optional[List[str]] = None
+    enum: list[str] | None = None
 
 
 @dataclass
 class LoadedSkill:
     """A skill loaded from the filesystem."""
+
     id: str
     name: str
     description: str
     category: str
-    parameters: List[SkillParameter]
+    parameters: list[SkillParameter]
     instructions: str
-    integration_required: Optional[str] = None
-    templates: Dict[str, str] = field(default_factory=dict)
-    assets: List[str] = field(default_factory=list)
-    references: List[str] = field(default_factory=list)
+    integration_required: str | None = None
+    templates: dict[str, str] = field(default_factory=dict)
+    assets: list[str] = field(default_factory=list)
+    references: list[str] = field(default_factory=list)
     source_path: str = ""
     is_builtin: bool = False
 
@@ -46,17 +51,17 @@ class SkillLoader:
     """Load skills from filesystem."""
 
     # Default skill directories to scan
-    DEFAULT_SKILL_DIRS = [
+    DEFAULT_SKILL_DIRS: ClassVar[list[str]] = [
         "~/.lazyagents/skills",
         "./skills",
         "./data/skills",
     ]
 
-    def __init__(self, skill_dirs: Optional[List[str]] = None):
+    def __init__(self, skill_dirs: list[str] | None = None):
         self.skill_dirs = skill_dirs or self.DEFAULT_SKILL_DIRS
-        self._skills_cache: Dict[str, LoadedSkill] = {}
+        self._skills_cache: dict[str, LoadedSkill] = {}
 
-    def load_all_skills(self) -> List[LoadedSkill]:
+    def load_all_skills(self) -> list[LoadedSkill]:
         """Load all skills from configured directories."""
         skills = []
 
@@ -86,7 +91,7 @@ class SkillLoader:
 
         return skills
 
-    def load_skill_from_path(self, path: str) -> Optional[LoadedSkill]:
+    def load_skill_from_path(self, path: str) -> LoadedSkill | None:
         """Load a skill from a specific path (file or folder)."""
         path_obj = Path(path).expanduser()
 
@@ -99,11 +104,11 @@ class SkillLoader:
 
         return None
 
-    def get_skill(self, skill_id: str) -> Optional[LoadedSkill]:
+    def get_skill(self, skill_id: str) -> LoadedSkill | None:
         """Get a skill by ID from cache."""
         return self._skills_cache.get(skill_id)
 
-    def _load_md_skill(self, md_file: Path) -> Optional[LoadedSkill]:
+    def _load_md_skill(self, md_file: Path) -> LoadedSkill | None:
         """Load a skill from a single .md file."""
         try:
             content = md_file.read_text(encoding="utf-8")
@@ -118,14 +123,16 @@ class SkillLoader:
             # Parse parameters from frontmatter
             params = []
             for param_data in frontmatter.get("parameters", []):
-                params.append(SkillParameter(
-                    name=param_data.get("name", ""),
-                    type=param_data.get("type", "string"),
-                    description=param_data.get("description", ""),
-                    required=param_data.get("required", True),
-                    default=param_data.get("default"),
-                    enum=param_data.get("enum"),
-                ))
+                params.append(
+                    SkillParameter(
+                        name=param_data.get("name", ""),
+                        type=param_data.get("type", "string"),
+                        description=param_data.get("description", ""),
+                        required=param_data.get("required", True),
+                        default=param_data.get("default"),
+                        enum=param_data.get("enum"),
+                    )
+                )
 
             return LoadedSkill(
                 id=skill_id,
@@ -139,10 +146,10 @@ class SkillLoader:
                 is_builtin=False,
             )
         except Exception as e:
-            print(f"Error loading skill from {md_file}: {e}")
+            logger.warning(f"Error loading skill from {md_file}: {e}")
             return None
 
-    def _load_folder_skill(self, skill_folder: Path) -> Optional[LoadedSkill]:
+    def _load_folder_skill(self, skill_folder: Path) -> LoadedSkill | None:
         """Load a skill from a folder containing SKILL.md."""
         skill_md = skill_folder / "SKILL.md"
 
@@ -159,14 +166,16 @@ class SkillLoader:
             # Parse parameters
             params = []
             for param_data in frontmatter.get("parameters", []):
-                params.append(SkillParameter(
-                    name=param_data.get("name", ""),
-                    type=param_data.get("type", "string"),
-                    description=param_data.get("description", ""),
-                    required=param_data.get("required", True),
-                    default=param_data.get("default"),
-                    enum=param_data.get("enum"),
-                ))
+                params.append(
+                    SkillParameter(
+                        name=param_data.get("name", ""),
+                        type=param_data.get("type", "string"),
+                        description=param_data.get("description", ""),
+                        required=param_data.get("required", True),
+                        default=param_data.get("default"),
+                        enum=param_data.get("enum"),
+                    )
+                )
 
             # Load templates
             templates = {}
@@ -206,10 +215,10 @@ class SkillLoader:
                 is_builtin=False,
             )
         except Exception as e:
-            print(f"Error loading skill from {skill_folder}: {e}")
+            logger.warning(f"Error loading skill from {skill_folder}: {e}")
             return None
 
-    def _parse_frontmatter(self, content: str) -> tuple[Optional[Dict[str, Any]], str]:
+    def _parse_frontmatter(self, content: str) -> tuple[dict[str, Any] | None, str]:
         """Parse YAML frontmatter from markdown content."""
         # Match YAML frontmatter between ---
         frontmatter_pattern = r"^---\s*\n(.*?)\n---\s*\n(.*)$"
@@ -220,12 +229,14 @@ class SkillLoader:
 
         try:
             frontmatter = yaml.safe_load(match.group(1))
+            if not isinstance(frontmatter, dict):
+                return None, content
             body = match.group(2)
             return frontmatter, body
         except yaml.YAMLError:
             return None, content
 
-    def to_db_format(self, skill: LoadedSkill) -> Dict[str, Any]:
+    def to_db_format(self, skill: LoadedSkill) -> dict[str, Any]:
         """Convert a loaded skill to database format."""
         parameters = {}
         for param in skill.parameters:
@@ -248,17 +259,19 @@ class SkillLoader:
             "integration_required": skill.integration_required,
             "is_builtin": skill.is_builtin,
             "implementation_type": "prompt",
-            "implementation": json.dumps({
-                "instructions": skill.instructions,
-                "templates": skill.templates,
-                "references": skill.references,
-            }),
+            "implementation": json.dumps(
+                {
+                    "instructions": skill.instructions,
+                    "templates": skill.templates,
+                    "references": skill.references,
+                }
+            ),
             "source_path": skill.source_path,
         }
 
 
 # Example skill markdown format:
-EXAMPLE_SKILL_MD = '''---
+EXAMPLE_SKILL_MD = """---
 name: Summarize Repository
 description: Analyze a GitHub repository and create a summary of its purpose and structure
 category: github
@@ -309,4 +322,4 @@ This is a web application for managing tasks...
 - PostgreSQL
 ...
 ```
-'''
+"""

@@ -4,8 +4,9 @@ Execution database models.
 
 import uuid
 from datetime import datetime
-from typing import Optional, Dict, Any, List
-from sqlalchemy import String, Text, DateTime, JSON, Integer, ForeignKey
+from typing import Any
+
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -32,16 +33,16 @@ class Execution(Base):
     status: Mapped[str] = mapped_column(String(50), default="pending")
 
     # Timing
-    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # Input/Output
-    input_data: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
-    output_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    input_data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    output_data: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     # Error info
-    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    error_traceback: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_traceback: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Token usage
     tokens_input: Mapped[int] = mapped_column(Integer, default=0)
@@ -57,7 +58,7 @@ class Execution(Base):
     )
 
     # Relationship to steps
-    steps: Mapped[List["ExecutionStep"]] = relationship(
+    steps: Mapped[list["ExecutionStep"]] = relationship(
         "ExecutionStep",
         back_populates="execution",
         cascade="all, delete-orphan",
@@ -96,15 +97,15 @@ class ExecutionStep(Base):
     status: Mapped[str] = mapped_column(String(50), default="pending")
 
     # Timing
-    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # Input/Output
-    input_data: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
-    output_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    input_data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    output_data: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     # Error
-    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationship
     execution: Mapped["Execution"] = relationship("Execution", back_populates="steps")

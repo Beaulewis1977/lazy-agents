@@ -7,7 +7,7 @@ from app.mcp.manager import (
 )
 
 __all__ = [
-    "MCPServerManager",
     "MCPServerLifecycleError",
+    "MCPServerManager",
     "MCPServerNotFoundError",
 ]

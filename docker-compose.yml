@@ -1,5 +1,9 @@
 version: "3.8"
 
+# Development-first baseline compose.
+# For production on a single VM, use:
+# docker compose -f docker-compose.yml -f compose.production.yaml up -d
+
 services:
   # =============================================================================
   # Frontend - Next.js Dashboard
@@ -49,8 +53,6 @@ services:
   # =============================================================================
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     volumes:
       - redis-data:/data
     networks:
@@ -65,6 +67,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     command: python -m app.worker
+    profiles:
+      - worker
     env_file:
       - .env
     depends_on:

@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Optional
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session
 from app.core.security import decrypt_secret
-from app.models.mcp_server import MCPServer
 from app.mcp import client
+from app.models.mcp_server import MCPServer
+
+logger = structlog.get_logger(__name__)
 
 
 class MCPServerNotFoundError(ValueError):
@@ -40,23 +44,26 @@ class MCPServerManager:
     ) -> None:
         self._session_factory = session_factory or async_session
         self._client = mcp_client_module
-        self._runtimes: Dict[str, RuntimeEntry] = {}
+        self._runtimes: dict[str, RuntimeEntry] = {}
         self._lock = asyncio.Lock()
 
     async def start_enabled_servers(self) -> None:
         """Start all enabled MCP servers and persist failures per server."""
 
         async with self._session_factory() as db:
-            result = await db.execute(
-                select(MCPServer.id).where(MCPServer.enabled.is_(True))
-            )
+            result = await db.execute(select(MCPServer.id).where(MCPServer.enabled.is_(True)))
             server_ids = [row[0] for row in result.all()]
 
         for server_id in server_ids:
             try:
                 await self.start_server(server_id)
-            except Exception:
+            except Exception as exc:
                 # Failure details are already persisted by start_server.
+                logger.warning(
+                    "Failed to auto-start MCP server during bootstrap",
+                    server_id=server_id,
+                    error=str(exc),
+                )
                 continue
 
     async def start_server(self, server_id: str) -> MCPServer:
@@ -164,7 +171,7 @@ class MCPServerManager:
             await db.refresh(server)
             return server
 
-    async def _mark_starting(self, server_id: str) -> Dict[str, Any]:
+    async def _mark_starting(self, server_id: str) -> dict[str, Any]:
         """Persist `starting` state and return runtime launch configuration."""
 
         async with self._session_factory() as db:
@@ -186,7 +193,7 @@ class MCPServerManager:
         *,
         status: str,
         last_error: Optional[str],
-        tools_detected: Optional[List[Dict[str, Any]]] = None,
+        tools_detected: Optional[list[dict[str, Any]]] = None,
     ) -> MCPServer:
         """Persist status boundary changes used by lifecycle operations."""
 
@@ -209,17 +216,15 @@ class MCPServerManager:
             raise MCPServerNotFoundError(f"MCP server {server_id} not found")
         return server
 
-    def _decrypt_env(self, env: Dict[str, str]) -> Dict[str, str]:
+    def _decrypt_env(self, env: dict[str, str]) -> dict[str, str]:
         """Decrypt persisted env payload before runtime startup."""
 
-        decrypted: Dict[str, str] = {}
+        decrypted: dict[str, str] = {}
         for key, value in env.items():
             try:
                 decrypted[key] = decrypt_secret(value)
             except Exception as exc:
-                raise MCPServerLifecycleError(
-                    f"Unable to decrypt env var '{key}': {exc}"
-                ) from exc
+                raise MCPServerLifecycleError(f"Unable to decrypt env var '{key}': {exc}") from exc
         return decrypted
 
     async def _safe_close(self, server_id: str, runtime: RuntimeEntry) -> None:

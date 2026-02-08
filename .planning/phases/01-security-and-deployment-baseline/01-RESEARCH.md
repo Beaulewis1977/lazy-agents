@@ -19,6 +19,7 @@ For this repository specifically, planning should target three execution units: 
 The established libraries/tools for this domain:
 
 ### Core
+
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
 | FastAPI | `>=0.109` (project) / current docs track 0.12x | API auth dependencies and startup validation hooks | Router/app dependency model makes fail-closed auth enforcement explicit and testable |
@@ -26,6 +27,7 @@ The established libraries/tools for this domain:
 | Docker Compose | v2 line | Single-VM deployment target | Official docs provide production override pattern and restart/operability guidance |
 
 ### Supporting
+
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
 | pydantic-settings | `>=2.1` | Typed startup config validation | Enforce required env vars in non-development mode |
@@ -33,6 +35,7 @@ The established libraries/tools for this domain:
 | httpx | `>=0.26` | Outbound integration checks | Ensure token-bearing requests never log plaintext headers/body |
 
 ### Alternatives Considered
+
 | Instead of | Could Use | Tradeoff |
 |------------|-----------|----------|
 | API key header auth baseline | OAuth2/JWT stack | More complete identity model, but unnecessary scope for Phase 1 baseline requirement |
@@ -115,6 +118,7 @@ services:
 
 Problems that look simple but have existing solutions:
 
+
 | Problem | Don't Build | Use Instead | Why |
 |---------|-------------|-------------|-----|
 | API auth gate | Custom middleware parsing raw headers across routes | FastAPI dependency injection (`Depends`/`Security`) at router or include_router boundary | Consistent enforcement and explicit contract |
@@ -182,6 +186,7 @@ docker compose -f compose.yaml -f compose.production.yaml up -d
 ```
 
 ## State of the Art
+
 
 | Old Approach | Current Approach | When Changed | Impact |
 |--------------|------------------|--------------|--------|

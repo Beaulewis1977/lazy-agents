@@ -3,7 +3,7 @@ MCP server management API endpoints.
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
@@ -18,14 +18,14 @@ from app.models.mcp_server import MCPServer
 router = APIRouter(prefix="/api/mcp", dependencies=[Depends(verify_api_key)])
 
 
-def _encrypt_env(env: Dict[str, str]) -> Dict[str, str]:
+def _encrypt_env(env: dict[str, str]) -> dict[str, str]:
     """Encrypt environment variable values before database persistence."""
     return {key: encrypt_secret(value) for key, value in env.items()}
 
 
-def _mask_env(env: Dict[str, str]) -> Dict[str, str]:
+def _mask_env(env: dict[str, str]) -> dict[str, str]:
     """Expose only masked environment values in API responses."""
-    return {key: "********" for key in env.keys()}
+    return {key: "********" for key in env}
 
 
 def _to_response(server: MCPServer) -> "MCPServerResponse":
@@ -61,8 +61,8 @@ class MCPServerBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     command: str = Field(..., min_length=1, max_length=500)
-    args: List[str] = Field(default_factory=list)
-    env: Dict[str, str] = Field(default_factory=dict)
+    args: list[str] = Field(default_factory=list)
+    env: dict[str, str] = Field(default_factory=dict)
     enabled: bool = True
 
     @field_validator("name", "command")
@@ -83,7 +83,7 @@ class MCPServerBase(BaseModel):
 
     @field_validator("args")
     @classmethod
-    def validate_args(cls, value: List[str]) -> List[str]:
+    def validate_args(cls, value: list[str]) -> list[str]:
         for index, item in enumerate(value):
             if not isinstance(item, str):
                 raise ValueError(f"args[{index}] must be a string")
@@ -93,8 +93,8 @@ class MCPServerBase(BaseModel):
 
     @field_validator("env")
     @classmethod
-    def validate_env(cls, value: Dict[str, str]) -> Dict[str, str]:
-        normalized: Dict[str, str] = {}
+    def validate_env(cls, value: dict[str, str]) -> dict[str, str]:
+        normalized: dict[str, str] = {}
         for key, item in value.items():
             normalized_key = key.strip()
             if not normalized_key:
@@ -115,8 +115,8 @@ class MCPServerUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=255)
     description: Optional[str] = None
     command: Optional[str] = Field(default=None, min_length=1, max_length=500)
-    args: Optional[List[str]] = None
-    env: Optional[Dict[str, str]] = None
+    args: Optional[list[str]] = None
+    env: Optional[dict[str, str]] = None
     enabled: Optional[bool] = None
 
     @field_validator("name", "command")
@@ -139,7 +139,7 @@ class MCPServerUpdate(BaseModel):
 
     @field_validator("args")
     @classmethod
-    def validate_args_optional(cls, value: Optional[List[str]]) -> Optional[List[str]]:
+    def validate_args_optional(cls, value: Optional[list[str]]) -> Optional[list[str]]:
         if value is None:
             return None
         for index, item in enumerate(value):
@@ -151,10 +151,10 @@ class MCPServerUpdate(BaseModel):
 
     @field_validator("env")
     @classmethod
-    def validate_env_optional(cls, value: Optional[Dict[str, str]]) -> Optional[Dict[str, str]]:
+    def validate_env_optional(cls, value: Optional[dict[str, str]]) -> Optional[dict[str, str]]:
         if value is None:
             return None
-        normalized: Dict[str, str] = {}
+        normalized: dict[str, str] = {}
         for key, item in value.items():
             normalized_key = key.strip()
             if not normalized_key:
@@ -172,11 +172,11 @@ class MCPServerResponse(BaseModel):
     name: str
     description: Optional[str]
     command: str
-    args: List[str]
-    env: Dict[str, str]
+    args: list[str]
+    env: dict[str, str]
     enabled: bool
     status: str
-    tools_detected: List[Dict[str, object]]
+    tools_detected: list[dict[str, object]]
     last_error: Optional[str]
     created_at: datetime
     updated_at: datetime
@@ -185,7 +185,7 @@ class MCPServerResponse(BaseModel):
         from_attributes = True
 
 
-@router.get("/servers", response_model=List[MCPServerResponse])
+@router.get("/servers", response_model=list[MCPServerResponse])
 async def list_mcp_servers(db: AsyncSession = Depends(get_db)):
     """List configured MCP servers."""
     result = await db.execute(select(MCPServer))

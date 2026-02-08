@@ -62,7 +62,7 @@ async def test_mcp_server_crud_lifecycle(test_client):
         "name": "Filesystem MCP",
         "description": "Serves filesystem tools",
         "command": "npx",
-        "args": ["@modelcontextprotocol/server-filesystem", "/tmp"],
+        "args": ["@modelcontextprotocol/server-filesystem", "."],
         "env": {"API_TOKEN": "super-secret-token"},
         "enabled": True,
     }
@@ -159,12 +159,13 @@ async def test_mcp_server_validation_errors_are_actionable(test_client):
 
 @pytest.mark.asyncio
 async def test_mcp_server_env_values_are_encrypted_at_rest(test_client, db_session_factory):
+    plain_env_value = "sample-env-value"
     payload = {
         "name": "Encrypted MCP",
         "description": "Checks encrypted storage",
         "command": "python",
         "args": ["server.py"],
-        "env": {"TOKEN": "plaintext-secret"},
+        "env": {"TOKEN": plain_env_value},
         "enabled": True,
     }
 
@@ -177,6 +178,6 @@ async def test_mcp_server_env_values_are_encrypted_at_rest(test_client, db_sessi
         result = await session.execute(select(MCPServer).where(MCPServer.id == created["id"]))
         persisted = result.scalar_one()
 
-    assert persisted.env["TOKEN"] != "plaintext-secret"
+    assert persisted.env["TOKEN"] != plain_env_value
     assert isinstance(persisted.env["TOKEN"], str)
     assert len(persisted.env["TOKEN"]) > 20

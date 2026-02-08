@@ -2,15 +2,16 @@
 Executions API endpoints.
 """
 
-from typing import List, Optional, Dict, Any
 from datetime import datetime
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select, desc, func
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import verify_api_key
+from app.core.security import redact_sensitive_data, redact_sensitive_string, verify_api_key
 from app.models.execution import Execution, ExecutionStep
 
 router = APIRouter(dependencies=[Depends(verify_api_key)])
@@ -20,18 +21,20 @@ router = APIRouter(dependencies=[Depends(verify_api_key)])
 # Schemas
 # =============================================================================
 
+
 class ExecutionStepResponse(BaseModel):
     """Schema for execution step response."""
+
     id: str
     step_number: int
     step_type: str
     name: str
     status: str
-    started_at: Optional[datetime]
-    completed_at: Optional[datetime]
-    input_data: Dict[str, Any]
-    output_data: Optional[Dict[str, Any]]
-    error_message: Optional[str]
+    started_at: datetime | None
+    completed_at: datetime | None
+    input_data: dict[str, Any]
+    output_data: dict[str, Any] | None
+    error_message: str | None
 
     class Config:
         from_attributes = True
@@ -39,20 +42,21 @@ class ExecutionStepResponse(BaseModel):
 
 class ExecutionResponse(BaseModel):
     """Schema for execution response."""
+
     id: str
     agent_id: str
     trigger: str
     status: str
-    started_at: Optional[datetime]
-    completed_at: Optional[datetime]
-    input_data: Dict[str, Any]
-    output_data: Optional[Dict[str, Any]]
-    error_message: Optional[str]
+    started_at: datetime | None
+    completed_at: datetime | None
+    input_data: dict[str, Any]
+    output_data: dict[str, Any] | None
+    error_message: str | None
     tokens_input: int
     tokens_output: int
     cost_cents: int
     created_at: datetime
-    steps: List[ExecutionStepResponse] = []
+    steps: list[ExecutionStepResponse] = []
 
     class Config:
         from_attributes = True
@@ -60,12 +64,13 @@ class ExecutionResponse(BaseModel):
 
 class ExecutionSummary(BaseModel):
     """Summary of an execution (without steps)."""
+
     id: str
     agent_id: str
     trigger: str
     status: str
-    started_at: Optional[datetime]
-    completed_at: Optional[datetime]
+    started_at: datetime | None
+    completed_at: datetime | None
     tokens_input: int
     tokens_output: int
     cost_cents: int
@@ -79,10 +84,11 @@ class ExecutionSummary(BaseModel):
 # Endpoints - IMPORTANT: Static paths must come BEFORE path parameters
 # =============================================================================
 
-@router.get("", response_model=List[ExecutionSummary])
+
+@router.get("", response_model=list[ExecutionSummary])
 async def list_executions(
-    agent_id: Optional[str] = None,
-    status: Optional[str] = None,
+    agent_id: str | None = None,
+    status: str | None = None,
     skip: int = 0,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
@@ -101,7 +107,7 @@ async def list_executions(
 
 @router.get("/stats")
 async def get_execution_stats(
-    agent_id: Optional[str] = None,
+    agent_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Get execution statistics."""
@@ -170,7 +176,22 @@ async def get_execution(
     steps = steps_result.scalars().all()
 
     response = ExecutionResponse.model_validate(execution)
-    response.steps = [ExecutionStepResponse.model_validate(s) for s in steps]
+    response.input_data = redact_sensitive_data(response.input_data)
+    response.output_data = redact_sensitive_data(response.output_data)
+    response.error_message = (
+        redact_sensitive_string(response.error_message) if response.error_message else None
+    )
+    response.steps = []
+    for step in steps:
+        step_response = ExecutionStepResponse.model_validate(step)
+        step_response.input_data = redact_sensitive_data(step_response.input_data)
+        step_response.output_data = redact_sensitive_data(step_response.output_data)
+        step_response.error_message = (
+            redact_sensitive_string(step_response.error_message)
+            if step_response.error_message
+            else None
+        )
+        response.steps.append(step_response)
     return response
 
 

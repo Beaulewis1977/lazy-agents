@@ -3,15 +3,14 @@ Scheduler - Schedule and execute agents on a cron-like schedule.
 Uses APScheduler for background job scheduling.
 """
 
-import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from datetime import datetime
-from typing import Dict, Optional, Callable
-from croniter import croniter
 
+from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.jobstores.memory import MemoryJobStore
+from croniter import croniter
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +30,10 @@ class AgentScheduler:
                 "misfire_grace_time": 60,
             },
         )
-        self._execute_callback: Optional[Callable] = None
+        self._execute_callback: Callable[[str, str], Awaitable[None]] | None = None
         self._is_running = False
 
-    def set_execute_callback(self, callback: Callable):
+    def set_execute_callback(self, callback: Callable[[str, str], Awaitable[None]]):
         """
         Set the callback function that will be called when an agent should run.
         The callback should accept (agent_id: str, trigger: str) as arguments.
@@ -129,7 +128,7 @@ class AgentScheduler:
             logger.error(f"Failed to unschedule agent {agent_id}: {e}")
             return False
 
-    def get_next_run(self, agent_id: str) -> Optional[datetime]:
+    def get_next_run(self, agent_id: str) -> datetime | None:
         """
         Get the next scheduled run time for an agent.
 
@@ -145,7 +144,7 @@ class AgentScheduler:
             return job.next_run_time
         return None
 
-    def get_scheduled_agents(self) -> Dict[str, datetime]:
+    def get_scheduled_agents(self) -> dict[str, datetime]:
         """
         Get all scheduled agents and their next run times.
 
@@ -181,7 +180,7 @@ class AgentScheduler:
         else:
             logger.warning(f"No execute callback set, skipping agent {agent_id}")
 
-    def parse_human_schedule(self, schedule: str) -> Optional[str]:
+    def parse_human_schedule(self, schedule: str) -> str | None:
         """
         Parse a human-readable schedule to a cron expression.
 
@@ -198,9 +197,8 @@ class AgentScheduler:
         schedule = schedule.lower().strip()
 
         # If it's already a cron expression, validate and return
-        if len(schedule.split()) == 5:
-            if self._validate_cron(schedule):
-                return schedule
+        if len(schedule.split()) == 5 and self._validate_cron(schedule):
+            return schedule
 
         # Parse human-readable formats
         if schedule.startswith("every "):
@@ -234,8 +232,13 @@ class AgentScheduler:
 
             # Weekday schedules
             weekdays = {
-                "monday": "1", "tuesday": "2", "wednesday": "3",
-                "thursday": "4", "friday": "5", "saturday": "6", "sunday": "0",
+                "monday": "1",
+                "tuesday": "2",
+                "wednesday": "3",
+                "thursday": "4",
+                "friday": "5",
+                "saturday": "6",
+                "sunday": "0",
             }
             for day, dow in weekdays.items():
                 if day in schedule:
