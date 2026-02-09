@@ -204,6 +204,8 @@ export default function MCPToolsPage() {
                     <button
                       onClick={() => toggleTool(toolName)}
                       className="btn btn-ghost btn-sm"
+                      aria-expanded={isExpanded}
+                      aria-controls={`tool-schema-${toolName}`}
                     >
                       {isExpanded ? 'Collapse' : 'Expand Schema'}
                     </button>
@@ -211,7 +213,7 @@ export default function MCPToolsPage() {
 
                   {/* Expanded schema view */}
                   {isExpanded && (
-                    <div style={{ marginTop: 'var(--space-4)' }}>
+                    <div id={`tool-schema-${toolName}`} style={{ marginTop: 'var(--space-4)' }}>
                       {/* Input schema */}
                       <div style={{ marginBottom: 'var(--space-6)' }}>
                         <h4

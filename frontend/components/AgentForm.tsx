@@ -195,7 +195,19 @@ export default function AgentForm({ initialData, onSubmit, submitLabel = "Save A
                   min="0"
                   max="2"
                   className="input"
-                  onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                  onChange={(e) => {
+                    const v = e.target.value.trim();
+                    if (v === '') {
+                      field.onChange(undefined);
+                    } else {
+                      const parsed = parseFloat(v);
+                      if (Number.isNaN(parsed)) {
+                        field.onChange(undefined);
+                      } else {
+                        field.onChange(parsed);
+                      }
+                    }
+                  }}
                 />
                 <p className="text-xs text-secondary mt-1">Controls randomness (0 = deterministic, 2 = very creative)</p>
                 {errors.temperature && <p className="text-sm mt-1" style={{ color: "var(--color-error)" }}>{errors.temperature.message}</p>}

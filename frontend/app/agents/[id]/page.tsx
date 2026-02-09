@@ -28,6 +28,7 @@ export default function AgentDetailPage() {
   const wsRef = useRef<WebSocket | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const latestRequestedExecutionIdRef = useRef<string | null>(null);
 
   const loadAgent = useCallback(async () => {
     try {
@@ -154,19 +155,31 @@ export default function AgentDetailPage() {
       // Collapse
       setSelectedExecutionId(null);
       setSelectedExecutionDetails(null);
+      latestRequestedExecutionIdRef.current = null;
       return;
     }
 
+    // Track the latest requested execution ID to prevent race conditions
+    latestRequestedExecutionIdRef.current = executionId;
     setSelectedExecutionId(executionId);
     setLoadingExecution(true);
     try {
       const details = await executionsAPI.get(executionId);
-      setSelectedExecutionDetails(details);
+      // Only update if this is still the latest requested execution
+      if (latestRequestedExecutionIdRef.current === executionId) {
+        setSelectedExecutionDetails(details);
+      }
     } catch (err) {
       console.error('Failed to load execution details', err);
-      alert('Failed to load execution details');
+      // Only show alert if this is still the latest requested execution
+      if (latestRequestedExecutionIdRef.current === executionId) {
+        alert('Failed to load execution details');
+      }
     } finally {
-      setLoadingExecution(false);
+      // Only update loading state if this is still the latest requested execution
+      if (latestRequestedExecutionIdRef.current === executionId) {
+        setLoadingExecution(false);
+      }
     }
   }
 
