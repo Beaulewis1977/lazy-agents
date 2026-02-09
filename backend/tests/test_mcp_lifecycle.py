@@ -81,6 +81,8 @@ async def db_session_factory(app_modules, tmp_path):
 
 @pytest_asyncio.fixture
 async def test_app(app_modules, db_session_factory):
+    from app.core.security import verify_api_key
+
     mcp_router, _, get_db, MCPServerManager = app_modules
     app = FastAPI()
     app.include_router(mcp_router)
@@ -102,7 +104,12 @@ async def test_app(app_modules, db_session_factory):
         finally:
             await session.close()
 
+    def override_verify_api_key():
+        """Allow all requests in test mode."""
+        return True
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[verify_api_key] = override_verify_api_key
     return app
 
 

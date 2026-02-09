@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** Users can securely run and connect agents across all their tools from one place, with production-ready behavior on a self-hosted single-VM deployment.
-**Current focus:** Phase 3 - Agent UX and MCP Tool Visibility
+**Current focus:** Phase 3.1 - Custom Integration Types and MCP JSON Import (INSERTED)
 
 ## Current Position
 
-Phase: 3 of 5 (Agent UX and MCP Tool Visibility)
-Plan: 0 of 3 in current phase
-Status: Ready to plan
-Last activity: 2026-02-08 — Phase 2 verified complete (02-VERIFICATION.md)
+Phase: 3.1 of 6 (Custom Integration Types and MCP JSON Import - INSERTED)
+Plan: Not yet planned
+Status: Not started
+Last activity: 2026-02-08 — Phase 3.1 inserted after Phase 3 completion
 
-Progress: [████░░░░░░] 40%
+Progress: [██████░░░░] 60% (phase 3.1 is urgent insertion work)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 17 min
-- Total execution time: 1.65 hours
+- Total plans completed: 9
+- Average duration: 14 min
+- Total execution time: 2.03 hours
 
 **By Phase:**
 
@@ -29,11 +29,11 @@ Progress: [████░░░░░░] 40%
 |-------|-------|-------|----------|
 | 1 | 3 | 82 min | 27 min |
 | 2 | 3 | 17 min | 6 min |
-| 3 | 0 | - | - |
+| 3 | 3 | 23 min | 8 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (7 min), 01-03 (74 min), 02-01 (5 min), 02-02 (3 min), 02-03 (9 min)
-- Trend: Improving reliability
+- Last 5 plans: 02-02 (3 min), 02-03 (9 min), 03-01 (7 min), 03-02 (6 min), 03-03 (10 min)
+- Trend: Excellent consistency on focused plans
 
 *Updated after each plan completion*
 
@@ -60,6 +60,20 @@ Recent decisions affecting current work:
 - Phase 02-02: Persist deterministic `last_error` lifecycle text and surface it through list/get/restart/sync API contracts.
 - Phase 02-03: Use typed `mcpServersAPI` client methods and refresh after lifecycle actions to keep UI status authoritative.
 - Phase 02-03: Keep env update payload optional in edit flows to preserve stored encrypted env values.
+- Phase 03-01: Use React Hook Form + Zod for form validation instead of manual state management.
+- Phase 03-01: Fetch last execution via backend query param instead of N+1 frontend queries.
+- Phase 03-01: Expandable table rows for execution details instead of separate detail page.
+- Phase 03-01: Replace two-step wizard with single comprehensive form.
+- Phase 03-02: Custom SchemaRenderer component without external dependencies for minimal bundle size.
+- Phase 03-02: Boolean() wrapper for TypeScript conditional rendering to avoid unknown type issues.
+- Phase 03-02: Defensive optional chaining for tools_detected array since MCP servers return loosely-typed metadata.
+- Phase 03-03: Add verify_api_key dependency override to MCP test fixtures for auth-gated routes.
+
+### Roadmap Evolution
+
+- Phase 3.1 inserted after Phase 3: Custom Integration Types and MCP JSON Import (URGENT)
+  - Reason: Enhance integration/MCP operator UX before proceeding to runtime invocation work
+  - Scope: Custom integration type catalog + MCP JSON config import flows
 
 ### Pending Todos
 
@@ -72,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-08 12:41
-Stopped at: Completed Phase 2 (02-mcp-server-control-plane)
-Resume file: None
+Last session: 2026-02-08 20:17
+Stopped at: Phase 3.1 inserted (urgent work) — not yet planned
+Resume file: None — Phase 3.1 ready for planning

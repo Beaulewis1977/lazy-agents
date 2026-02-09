@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 
 import DashboardLayout from "@/components/DashboardLayout";
 import {
@@ -475,9 +476,33 @@ export default function MCPIntegrationsPage() {
                           {server.status}
                         </span>
                       </td>
-                      <td>{server.tools_detected?.length ?? 0}</td>
+                      <td>
+                        {(server.tools_detected?.length ?? 0) > 0 ? (
+                          <Link
+                            href={`/integrations/mcp/${server.id}/tools`}
+                            style={{
+                              color: 'var(--color-accent)',
+                              textDecoration: 'none',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 'var(--space-1)',
+                            }}
+                          >
+                            {server.tools_detected?.length}
+                            <span style={{ fontSize: '0.8em' }}>→</span>
+                          </Link>
+                        ) : (
+                          <span style={{ color: 'var(--color-text-muted)' }}>0</span>
+                        )}
+                      </td>
                       <td>
                         <div className="flex gap-2">
+                          <Link
+                            href={`/integrations/mcp/${server.id}/tools`}
+                            className="btn btn-ghost btn-sm"
+                          >
+                            Tools
+                          </Link>
                           <button
                             className="btn btn-secondary btn-sm"
                             onClick={() => void handleLifecycleAction(server, "restart")}
